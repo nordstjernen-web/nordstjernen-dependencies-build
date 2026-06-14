@@ -43,8 +43,10 @@ ld         = ndk_bin / 'ld.lld'
 pkg-config = 'pkg-config'
 
 [built-in options]
-c_args         = ['-fPIC', '-DANDROID', '-D__ANDROID_API__=${ANDROID_API}']
-cpp_args       = ['-fPIC', '-DANDROID', '-D__ANDROID_API__=${ANDROID_API}']
+# NDK clang already defines __ANDROID_API__ from the android${ANDROID_API} target
+# triple, so we don't redefine it here (avoids -Wmacro-redefined noise).
+c_args         = ['-fPIC', '-DANDROID']
+cpp_args       = ['-fPIC', '-DANDROID']
 c_link_args    = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}']
 cpp_link_args  = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}']
 default_library = 'shared'

@@ -287,8 +287,8 @@ build_autotools() {  # build_autotools <srcdir> [extra ./configure args...]
   ( cd "${src}"
     CC="${CC_LAUNCHER:+${CC_LAUNCHER} }${CC}" \
     CXX="${CC_LAUNCHER:+${CC_LAUNCHER} }${CXX}" \
-    CFLAGS="${CFLAGS:-} -fPIC -O2 -DANDROID -D__ANDROID_API__=${ANDROID_API}" \
-    CXXFLAGS="${CXXFLAGS:-} -fPIC -O2 -DANDROID -D__ANDROID_API__=${ANDROID_API}" \
+    CFLAGS="${CFLAGS:-} -fPIC -O2 -DANDROID" \
+    CXXFLAGS="${CXXFLAGS:-} -fPIC -O2 -DANDROID" \
     LDFLAGS="${LDFLAGS:-} ${LINK_LDFLAGS}" \
     ./configure \
       --host="${ABI_TRIPLE}" \

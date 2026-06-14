@@ -162,9 +162,10 @@ dep_openssl() {
   local s; s="$(fetch_source openssl)"
   ( cd "${s}"
     export ANDROID_NDK_ROOT="${ANDROID_NDK_HOME}"
+    # The NDK r27 android${ANDROID_API} target triple already defines
+    # __ANDROID_API__, so do not pass -D__ANDROID_API__ (would warn/-Werror).
     PATH="${NDK_BIN}:${PATH}" \
     ./Configure "${ABI_OPENSSL_TARGET}" \
-      -D__ANDROID_API__="${ANDROID_API}" \
       --prefix="${PREFIX}" --libdir=lib \
       shared no-tests no-apps "${PAGE_SIZE_LDFLAG}" "${UNDEF_VER_LDFLAG}"
     PATH="${NDK_BIN}:${PATH}" make -j"${NPROC}"
