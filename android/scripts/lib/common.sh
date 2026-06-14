@@ -222,7 +222,7 @@ setup_build_env() {
   export PKG_CONFIG="${PKG_CONFIG:-pkg-config}"
 
   # ccache speeds up reruns when CMAKE/AUTOTOOLS share objects.
-  if command -v ccache >/dev/null 2>&1; then
+  if command -v ccache >/dev/null 2>&1 && [ "${HOST_TAG:-}" != "windows-x86_64" ]; then
     export CCACHE_DIR="${CCACHE_DIR:-${ANDROID_DIR}/.cache/ccache}"
     mkdir -p "${CCACHE_DIR}"
     CC_LAUNCHER="ccache"
