@@ -183,12 +183,20 @@ fetch_source() {
 
   local file="${TARBALL_CACHE}/$(basename "${url}")"
   if [ ! -f "${file}" ] || ! echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1; then
-    log "Downloading ${name} ${DEP_VERSION[$name]}"
-    curl -fsSL --retry 4 --retry-delay 2 -o "${file}.tmp" "${url}"
+    log "Downloading ${name} ${DEP_VERSION[$name]} from ${url}"
+    # A real User-Agent avoids 4xx from picky upstreams (some reject curl's
+    # default UA). Fail loudly here so a download error is not later misreported
+    # as a checksum mismatch.
+    if ! curl -fsSL --retry 4 --retry-delay 2 \
+              -A "nordstjernen-android-deps/1.0 (+https://github.com/nordstjernen-web/nordstjernen-android)" \
+              -o "${file}.tmp" "${url}"; then
+      rm -f "${file}.tmp"
+      die "download failed for ${name} from ${url}"
+    fi
     mv "${file}.tmp" "${file}"
   fi
   echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1 \
-    || die "checksum mismatch for ${name} (${file})"
+    || die "checksum mismatch for ${name} (${file}); delete it and re-run, or fix the manifest"
 
   local destroot="${BUILD_ROOT}/src"
   local dest="${destroot}/${name}"
