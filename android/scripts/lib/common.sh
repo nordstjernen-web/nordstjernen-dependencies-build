@@ -216,8 +216,15 @@ download_verify() {
 # Overlapping the downloads -- instead of fetching one right before each serial
 # build step -- shaves real wall-clock time off a cold build without relying on
 # any CI cache being warm. Subsequent fetch_source calls become local hits.
+#
+# This is BEST-EFFORT: it is only a warm-up. Some upstreams (e.g. freedesktop.org
+# 418s, SourceForge mirror redirects) get flaky under parallel load, so a failed
+# prefetch must NOT fail the build -- the authoritative, retrying download still
+# happens serially in fetch_source at build time. We therefore warn, never die.
 _prefetch_batch() {
   local n p rc=0 pids=()
+  # Each job runs in its own subshell (via &), so download_verify's die() only
+  # exits that job; we collect the failure via wait instead of aborting.
   for n in "$@"; do download_verify "${n}" & pids+=("$!"); done
   for p in "${pids[@]}"; do wait "${p}" || rc=1; done
   return "${rc}"
@@ -226,7 +233,7 @@ _prefetch_batch() {
 prefetch_sources() {
   local names=("$@"); [ "${#names[@]}" -eq 0 ] && names=("${DEP_ORDER[@]}")
   local maxjobs="${PREFETCH_JOBS:-4}"
-  log "Prefetching ${#names[@]} source tarball(s), ${maxjobs} at a time"
+  log "Prefetching ${#names[@]} source tarball(s), ${maxjobs} at a time (best-effort)"
   local rc=0 batch=() n
   for n in "${names[@]}"; do
     batch+=("${n}")
@@ -236,7 +243,7 @@ prefetch_sources() {
     fi
   done
   [ "${#batch[@]}" -gt 0 ] && { _prefetch_batch "${batch[@]}" || rc=1; }
-  [ "${rc}" -eq 0 ] || die "one or more source downloads failed during prefetch"
+  [ "${rc}" -eq 0 ] || warn "some tarballs failed to prefetch; they will be re-fetched (with retries) at build time"
 }
 
 # Usage: fetch_source <name>  -> echoes the extracted source directory.
