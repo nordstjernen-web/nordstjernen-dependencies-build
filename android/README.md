@@ -39,8 +39,11 @@ order:
   (freetype↔harfbuzz is a cycle: freetype is built once *without* harfbuzz,
   then harfbuzz, then freetype is rebuilt *with* harfbuzz)
 - **Graphics:** cairo, pango, pangocairo
-- **Network:** OpenSSL (libcrypto + libssl), nghttp2, libcurl (HTTP/2)
+- **Network:** OpenSSL (libcrypto + libssl), nghttp2, brotli (libcurl decodes
+  `Content-Encoding: br`), libcurl (HTTP/2 + brotli)
 - **Misc:** sqlite3, uchardet, libpsl, libwebp
+- **On-device inference:** llama.cpp (libllama + ggml), built with
+  `GGML_NATIVE=OFF`/`GGML_OPENMP=OFF` for a clean NDK cross-compile
 
 > `lexbor`, `quickjs-ng`, `WAMR` and `Wuffs` are **not** built here — they are
 > vendored in the engine tree and compiled together with the engine.
@@ -155,6 +158,14 @@ Every dependency is pinned to an exact version in `deps/manifest.txt`, and each
 downloaded tarball's SHA-256 is verified before extraction. Bumping a version
 means editing the manifest and updating its checksum; the source-tarball cache
 key is derived from the manifest, so a bump invalidates the cache automatically.
+
+## Build speed
+
+`build-android-deps.sh` prefetches **all** source tarballs in parallel (a few at
+a time, `PREFETCH_JOBS=4` by default) before the serial compile loop, so network
+latency overlaps instead of stalling each step. This is independent of the CI
+caches — a completely cold build still benefits. The four ABIs build as parallel
+matrix jobs, and `ccache` only accelerates *reruns*.
 
 ## CI triggers
 

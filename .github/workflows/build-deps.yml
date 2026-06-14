@@ -40,10 +40,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -76,7 +76,7 @@ jobs:
           echo "Installed NDK at ${NDK_HOME}"
 
       - name: Cache source tarballs
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: android/.cache/tarballs
           key: deps-tarballs-${{ hashFiles('android/deps/manifest.txt') }}
@@ -84,7 +84,9 @@ jobs:
             deps-tarballs-
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
+        # ccache only speeds up *reruns*; a clean build (the common case here)
+        # leans on the parallel source prefetch in build-android-deps.sh instead.
         with:
           path: android/.cache/ccache
           key: deps-ccache-${{ matrix.abi }}-${{ hashFiles('android/deps/manifest.txt') }}-${{ github.sha }}
@@ -102,7 +104,7 @@ jobs:
 
       - name: Upload build logs (${{ matrix.abi }})
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nordstjernen-android-build-logs-${{ matrix.abi }}
           path: |
@@ -127,12 +129,25 @@ jobs:
           for m in zlib libffi libpcre2-8 expat gobject-2.0 gio-2.0 \
                    freetype2 libpng harfbuzz fontconfig pixman-1 fribidi \
                    cairo pango pangocairo libcrypto libssl libnghttp2 \
+                   libbrotlidec libbrotlienc libbrotlicommon \
                    libcurl sqlite3 uchardet libpsl libwebp; do
             pkg-config --exists "$m" && echo "ok   $m $(pkg-config --modversion "$m")" \
                                      || { echo "MISSING $m"; exit 1; }
           done
-          # Verify the 16 KB page-size flag took effect on a representative lib.
+          # llama.cpp / ggml ship CMake config rather than pkg-config, so check
+          # for the shared libraries directly.
+          for so in libllama.so libggml.so libggml-base.so; do
+            test -f "${PREFIX}/lib/${so}" && echo "ok   ${so}" \
+                                          || { echo "MISSING ${so}"; exit 1; }
+          done
+          # Confirm libcurl actually linked brotli (decodes `Content-Encoding: br`).
           if command -v readelf >/dev/null; then
+            if readelf -dW "${PREFIX}/lib/libcurl.so" | grep -q 'libbrotlidec'; then
+              echo "ok   libcurl.so links libbrotlidec (brotli enabled)"
+            else
+              echo "::error::libcurl.so does not link libbrotlidec"; exit 1
+            fi
+            # Verify the 16 KB page-size flag took effect on a representative lib.
             readelf -lW "${PREFIX}/lib/libcurl.so" | grep -q 'LOAD' && \
               echo "libcurl.so program headers present"
           fi
@@ -155,7 +170,7 @@ jobs:
           } > "${OUT}/${{ matrix.abi }}/BUILDINFO.txt"
 
       - name: Upload sysroot artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nordstjernen-android-sysroot-${{ matrix.abi }}
           # Upload the parent dir so the artifact keeps a top-level <abi>/
@@ -179,10 +194,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download all sysroot artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: nordstjernen-android-sysroot-*
           path: artifacts

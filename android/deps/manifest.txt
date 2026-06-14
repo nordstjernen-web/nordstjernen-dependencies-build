@@ -34,7 +34,7 @@ proxy-libintl 0.5    f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda178575
 
 # --- Text / font ------------------------------------------------------------
 freetype    2.14.3    36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f  https://downloads.sourceforge.net/project/freetype/freetype2/2.14.3/freetype-2.14.3.tar.xz
-libpng      1.6.44    0ef5b633d0c65f780c4fced27ff832998e71478c13b45dfb6e94f23a82f64f7c  https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.44.tar.gz
+libpng      1.6.58    a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf  https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.58.tar.gz
 harfbuzz    14.2.1    a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e  https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz
 fontconfig  2.18.1    e9309564717b6301230112b173f36c288489479d381d2f0add1210ca5b16ba7e  https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.1/fontconfig-2.18.1.tar.gz
 pixman      0.46.4    d09c44ebc3bd5bee7021c79f922fe8fb2fb57f7320f55e97ff9914d2346a591c  https://cairographics.org/releases/pixman-0.46.4.tar.gz
@@ -45,8 +45,11 @@ cairo       1.18.4    445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599
 pango       1.57.1    e65d6d117080dc3aeeb7d8b4b3b518f7383aa2e6cfce23117c623cd624764c2f  https://download.gnome.org/sources/pango/1.57/pango-1.57.1.tar.xz
 
 # --- Network ----------------------------------------------------------------
-openssl     3.6.2     aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f  https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz
+openssl     3.6.3     243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1  https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz
 nghttp2     1.69.0    c866b7477cbb7512ab6863a685027adbb1bb8da8fc3bab7429ed43d3281d5aa9  https://github.com/nghttp2/nghttp2/releases/download/v1.69.0/nghttp2-1.69.0.tar.gz
+# brotli powers HTTP `Content-Encoding: br`, which the vast majority of sites now
+# serve; building it lets libcurl (and thus the browser) decode brotli natively.
+brotli      1.2.0     816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec  https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz
 curl        8.20.0    4be48e69cf467246cb97d369b85d78a08528f2b37cffef2418ee16e6a4eb596e  https://curl.se/download/curl-8.20.0.tar.bz2
 
 # --- Misc -------------------------------------------------------------------
@@ -54,3 +57,8 @@ sqlite3     3.53.2    588ad51949419a56ebe81fe56193d510c559eb94c9a57748387860b5d3
 uchardet    0.0.8     e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0  https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
 libpsl      0.21.5    1dcc9ceae8b128f3c0b3f654decd0e1e891afc6ff81098f227ef260449dae208  https://github.com/rockdaboot/libpsl/releases/download/0.21.5/libpsl-0.21.5.tar.gz
 libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564  https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz
+
+# --- On-device inference ----------------------------------------------------
+# llama.cpp (libllama + ggml) for the engine's on-device LLM features. Pinned to
+# an upstream release-build tag (bNNNN); bump deliberately and re-verify sha256.
+llama       b9632     113f5d31750d160d026943bc584f74c811cff33019b6e418d072036f6d1a8326  https://github.com/ggml-org/llama.cpp/archive/refs/tags/b9632.tar.gz

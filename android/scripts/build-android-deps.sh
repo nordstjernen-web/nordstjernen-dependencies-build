@@ -198,6 +198,13 @@ dep_nghttp2() {
     -DENABLE_DOC=OFF -DBUILD_TESTING=OFF
 }
 
+dep_brotli() {
+  local s; s="$(fetch_source brotli)"
+  # Shared libbrotlicommon/dec/enc + pkg-config files; libcurl links brotlidec
+  # to decode `Content-Encoding: br`.
+  build_cmake "${s}" -DBROTLI_BUILD_TOOLS=OFF -DBROTLI_DISABLE_TESTS=ON
+}
+
 dep_sqlite3() {
   local s; s="$(fetch_source sqlite3)"
   build_autotools "${s}" --disable-static-shell --disable-editline --disable-readline
@@ -230,20 +237,34 @@ dep_curl() {
     -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
     -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_USE_LIBPSL=ON \
     -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_LIBIDN2=OFF \
-    -DCURL_ZLIB=ON -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DENABLE_THREADED_RESOLVER=ON \
+    -DCURL_ZLIB=ON -DCURL_BROTLI=ON -DCURL_ZSTD=OFF -DENABLE_THREADED_RESOLVER=ON \
     -DHTTP_ONLY=OFF
 }
 
+dep_llama() {
+  local s; s="$(fetch_source llama)"
+  # Cross-compile libllama + ggml only (no tools/examples/server/tests). Pin the
+  # cross-unfriendly bits: GGML_NATIVE=OFF (never probe the build host's CPU) and
+  # GGML_OPENMP=OFF (bionic ships no libgomp). LLAMA_BUILD_COMMON=OFF drops the
+  # curl/build-info helper library the engine does not consume.
+  build_cmake "${s}" \
+    -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
+    -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_COMMON=OFF \
+    -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BUILD_TESTS=OFF
+}
+
 # Ordered build plan. freetype is built twice to resolve the harfbuzz cycle.
+# brotli precedes curl so libcurl can link it for `Content-Encoding: br`.
 BUILD_PLAN=(
   zlib libffi pcre2 expat
   glib
   libpng freetype_stage1 harfbuzz freetype_stage2
   fribidi pixman fontconfig
   cairo pango
-  openssl nghttp2
+  openssl nghttp2 brotli
   sqlite3 uchardet libpsl libwebp
   curl
+  llama
 )
 
 log "==> Building Android dependency sysroot for ${CURRENT_ABI}"
@@ -251,6 +272,14 @@ log "    NDK:     ${ANDROID_NDK_HOME}"
 log "    Prefix:  ${PREFIX}"
 log "    Deps:    ${#DEP_ORDER[@]} pinned in manifest"
 log "    Verbose: ${NORDSTJERNEN_ANDROID_VERBOSE:-0}"
+
+# Download all source tarballs up front and in parallel so network latency
+# overlaps instead of stalling each serial build step (no CI cache required).
+if [ -n "${ONLY}" ]; then
+  prefetch_sources ${ONLY//,/ }
+else
+  prefetch_sources
+fi
 
 for step in "${BUILD_PLAN[@]}"; do
   # The --only filter matches manifest names; map the two freetype stages.

@@ -169,19 +169,30 @@ load_manifest() {
 # ---------------------------------------------------------------------------
 # Download + verify + extract
 #
-# Usage: fetch_source <name>   -> echoes the extracted source directory.
 # Tarballs are cached under ${TARBALL_CACHE} (default android/.cache/tarballs)
-# and re-verified on every run.
+# and re-verified on every run. The cache filename is prefixed with the
+# dependency name so two deps that share a generic archive basename (e.g. the
+# GitHub "archive/refs/tags/v1.2.0.tar.gz" form) can never collide.
 # ---------------------------------------------------------------------------
 TARBALL_CACHE="${TARBALL_CACHE:-${ANDROID_DIR}/.cache/tarballs}"
 
-fetch_source() {
+# Echo the cache path for a dependency's tarball (no I/O).
+tarball_path() {
+  local name="$1"; local url="${DEP_URL[$name]:-}"
+  [ -n "${url}" ] || die "no manifest entry for '${name}'"
+  printf '%s/%s-%s' "${TARBALL_CACHE}" "${name}" "$(basename "${url}")"
+}
+
+# Ensure a dependency's tarball is present in the cache and matches its sha256,
+# downloading it if missing/corrupt. Idempotent and safe to run in parallel
+# (each dep writes a distinct file). Does NOT extract.
+download_verify() {
   local name="$1"
   local url="${DEP_URL[$name]:-}"; local sha="${DEP_SHA256[$name]:-}"
   [ -n "${url}" ] || die "no manifest entry for '${name}'"
   mkdir -p "${TARBALL_CACHE}"
+  local file; file="$(tarball_path "${name}")"
 
-  local file="${TARBALL_CACHE}/$(basename "${url}")"
   if [ ! -f "${file}" ] || ! echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1; then
     log "Downloading ${name} ${DEP_VERSION[$name]} from ${url}"
     # A real User-Agent avoids 4xx from picky upstreams (some reject curl's
@@ -199,9 +210,43 @@ fetch_source() {
   fi
   echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1 \
     || die "checksum mismatch for ${name} (${file}); delete it and re-run, or fix the manifest"
+}
 
-  local destroot="${BUILD_ROOT}/src"
-  local dest="${destroot}/${name}"
+# Download every (or the named) dependency tarball up front, a few at a time.
+# Overlapping the downloads -- instead of fetching one right before each serial
+# build step -- shaves real wall-clock time off a cold build without relying on
+# any CI cache being warm. Subsequent fetch_source calls become local hits.
+_prefetch_batch() {
+  local n p rc=0 pids=()
+  for n in "$@"; do download_verify "${n}" & pids+=("$!"); done
+  for p in "${pids[@]}"; do wait "${p}" || rc=1; done
+  return "${rc}"
+}
+
+prefetch_sources() {
+  local names=("$@"); [ "${#names[@]}" -eq 0 ] && names=("${DEP_ORDER[@]}")
+  local maxjobs="${PREFETCH_JOBS:-4}"
+  log "Prefetching ${#names[@]} source tarball(s), ${maxjobs} at a time"
+  local rc=0 batch=() n
+  for n in "${names[@]}"; do
+    batch+=("${n}")
+    if [ "${#batch[@]}" -ge "${maxjobs}" ]; then
+      _prefetch_batch "${batch[@]}" || rc=1
+      batch=()
+    fi
+  done
+  [ "${#batch[@]}" -gt 0 ] && { _prefetch_batch "${batch[@]}" || rc=1; }
+  [ "${rc}" -eq 0 ] || die "one or more source downloads failed during prefetch"
+}
+
+# Usage: fetch_source <name>  -> echoes the extracted source directory.
+# Reuses the prefetched/cached tarball (downloading on demand if missing).
+fetch_source() {
+  local name="$1"
+  download_verify "${name}"
+  local file; file="$(tarball_path "${name}")"
+
+  local dest="${BUILD_ROOT}/src/${name}"
   rm -rf "${dest}"; mkdir -p "${dest}"
   case "${file}" in
     *.tar.gz|*.tgz)  tar -xzf "${file}" -C "${dest}" --strip-components=1 ;;
