@@ -293,6 +293,7 @@ build_cmake() {  # build_cmake <srcdir> [extra -D args...]
     -DANDROID_PLATFORM="android-${ANDROID_API}" \
     -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
     -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_FIND_ROOT_PATH="${PREFIX}" \
