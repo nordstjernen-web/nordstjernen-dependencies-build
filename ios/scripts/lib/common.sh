@@ -311,6 +311,36 @@ build_cmake() {  # build_cmake <srcdir> [extra -D args...]
   cmake --install "${b}"
 }
 
+# Build-machine (macOS) compiler for meson `native: true` targets — code
+# generators (e.g. fribidi's gen.tab gen-unicode-version) that must run on the
+# runner, not the iOS target. Written once and shared by both platforms. It
+# pins the macOS SDK explicitly so the exported SDKROOT (which points at the iOS
+# SDK) does not leak into the native compile.
+ensure_native_file() {
+  local nf="${IOS_DIR}/.build/native-macos.ini"
+  if [ ! -f "${nf}" ]; then
+    mkdir -p "$(dirname "${nf}")"
+    local ncc ncxx nsdk
+    ncc="$(xcrun --sdk macosx --find clang 2>/dev/null || echo clang)"
+    ncxx="$(xcrun --sdk macosx --find clang++ 2>/dev/null || echo clang++)"
+    nsdk="$(xcrun --sdk macosx --show-sdk-path 2>/dev/null || echo /)"
+    cat > "${nf}" <<EOF
+[binaries]
+c = '${ncc}'
+cpp = '${ncxx}'
+objc = '${ncc}'
+objcpp = '${ncxx}'
+
+[built-in options]
+c_args = ['-isysroot', '${nsdk}']
+cpp_args = ['-isysroot', '${nsdk}']
+c_link_args = ['-isysroot', '${nsdk}']
+cpp_link_args = ['-isysroot', '${nsdk}']
+EOF
+  fi
+  printf '%s' "${nf}"
+}
+
 build_meson() {  # build_meson <srcdir> [extra -D args...]
   local src="$1"; shift
   local b="${src}/_build"
@@ -318,6 +348,7 @@ build_meson() {  # build_meson <srcdir> [extra -D args...]
   log "meson source=${src} build=${b} prefix=${PREFIX}"
   meson setup "${b}" "${src}" \
     --cross-file "${CROSS_DIR}/${CURRENT_PLATFORM}.cross" \
+    --native-file "$(ensure_native_file)" \
     --prefix "${PREFIX}" \
     --libdir lib \
     --buildtype release \
