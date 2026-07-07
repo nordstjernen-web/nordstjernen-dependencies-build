@@ -44,10 +44,13 @@ nm         = '${NM}'
 pkg-config = 'pkg-config'
 
 [built-in options]
-# _DARWIN_C_SOURCE exposes Darwin's non-POSIX extensions (locale_t and the
-# LC_*_MASK constants, etc.) that some deps use unconditionally but that a
-# strict -std=c11 hides on Apple platforms (e.g. fontconfig's fcint.h).
-c_args          = common_args + ['-fPIC', '-O2', '-D_DARWIN_C_SOURCE']
+# Two Darwin/iOS fixes for every C compile:
+#  - _DARWIN_C_SOURCE exposes Darwin's non-POSIX extensions.
+#  - force-include <xlocale.h>, which declares locale_t and the LC_*_MASK
+#    constants that some deps (fontconfig's fcint.h) use unconditionally but do
+#    not themselves include under the iOS cross-configure. _DARWIN_C_SOURCE
+#    alone is not enough — the header must actually be pulled in.
+c_args          = common_args + ['-fPIC', '-O2', '-D_DARWIN_C_SOURCE', '-include', 'xlocale.h']
 cpp_args        = common_args + ['-fPIC', '-O2', '-D_DARWIN_C_SOURCE']
 objc_args       = common_args + ['-fPIC', '-O2', '-D_DARWIN_C_SOURCE']
 c_link_args     = common_args

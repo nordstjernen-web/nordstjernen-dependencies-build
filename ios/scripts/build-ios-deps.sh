@@ -153,12 +153,10 @@ dep_fontconfig() {
   local s; s="$(fetch_source fontconfig)"
   # fontconfig's fcint.h uses locale_t and the LC_*_MASK constants but only
   # includes <xlocale.h> when its own HAVE_XLOCALE_H probe succeeds, which it
-  # does not under the iOS cross-configure. Force-include <xlocale.h> (where
-  # Darwin declares them) via CFLAGS, scoped to this build with a subshell so it
-  # does not leak into later deps.
-  ( export CFLAGS="${CFLAGS:-} -include xlocale.h"
-    build_meson "${s}" \
-      -Ddoc=disabled -Dtests=disabled -Dtools=disabled -Dcache-build=disabled )
+  # does not under the iOS cross-configure. <xlocale.h> is force-included for
+  # every C compile via the meson cross-file (see gen-cross-files.sh).
+  build_meson "${s}" \
+    -Ddoc=disabled -Dtests=disabled -Dtools=disabled -Dcache-build=disabled
 }
 
 dep_cairo() {
