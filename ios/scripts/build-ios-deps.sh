@@ -267,11 +267,20 @@ dep_libwebp() {
 
 dep_curl() {
   local s; s="$(fetch_source curl)"
+  # curl defaults CURL_USE_PKGCONFIG=OFF on Apple, so its FindBrotli does not
+  # locate our static brotli via pkg-config and brotli silently drops out. Give
+  # FindBrotli explicit absolute-path hints (its documented input variables) so
+  # BROTLI_FOUND is set and content_encoding.c compiles the `Content-Encoding:
+  # br` decoder.
   build_cmake "${s}" \
     -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
     -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_USE_LIBPSL=ON \
     -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_LIBIDN2=OFF \
     -DCURL_ZLIB=ON -DCURL_BROTLI=ON -DCURL_ZSTD=OFF -DENABLE_THREADED_RESOLVER=ON \
+    -DBROTLI_USE_STATIC_LIBS=ON \
+    -DBROTLI_INCLUDE_DIR="${PREFIX}/include" \
+    -DBROTLICOMMON_LIBRARY="${PREFIX}/lib/libbrotlicommon.a" \
+    -DBROTLIDEC_LIBRARY="${PREFIX}/lib/libbrotlidec.a" \
     -DHTTP_ONLY=OFF
 }
 
