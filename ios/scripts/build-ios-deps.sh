@@ -167,10 +167,12 @@ dep_fontconfig() {
 
 dep_cairo() {
   local s; s="$(fetch_source cairo)"
+  # tests=disabled drops cairo-boilerplate, which calls system() — a function
+  # iOS marks unavailable. Only the library is needed.
   build_meson "${s}" \
     -Dxlib=disabled -Dxcb=disabled -Dquartz=disabled \
     -Dfreetype=enabled -Dfontconfig=enabled -Dpng=enabled -Dzlib=enabled \
-    -Dglib=enabled
+    -Dglib=enabled -Dtests=disabled
 }
 
 dep_pango() {
