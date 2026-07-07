@@ -10,3 +10,12 @@
 /android/sysroot/
 /sysroot/
 /artifact/
+
+# Generated Meson cross-files (produced by ios/scripts/gen-cross-files.sh;
+# they embed absolute, machine-specific SDK paths).
+/ios/cross/*.cross
+
+# iOS build scratch, download cache and installed sysroots.
+/ios/.build/
+/ios/.cache/
+/ios/sysroot/

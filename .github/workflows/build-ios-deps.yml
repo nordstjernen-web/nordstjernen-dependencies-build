@@ -1,0 +1,236 @@
+name: build-ios-deps
+
+# Cross-compile the full native third-party dependency stack for every iOS
+# platform (device + simulator) and publish each as a downloadable "iOS sysroot"
+# artifact that nordstjernen's ios/scripts/build-deps.sh (and local devs) can
+# consume instead of compiling everything from source.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/deps/**'
+      - 'ios/scripts/**'
+      - 'ios/cross/**'
+      - '.github/workflows/build-ios-deps.yml'
+  schedule:
+    # Nightly rebuild (04:47 UTC) to catch toolchain/runner drift.
+    - cron: '47 4 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ios-deps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IOS_DEPLOYMENT_TARGET: '15.0'
+  NORDSTJERNEN_IOS_VERBOSE: '1'
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [device, simulator]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: |
+          set -euo pipefail
+          brew update
+          brew install meson ninja pkg-config cmake autoconf automake libtool gperf nasm ccache
+          echo "meson $(meson --version), ninja $(ninja --version), cmake $(cmake --version | head -1)"
+          echo "Xcode: $(xcodebuild -version | tr '\n' ' ')"
+          echo "device SDK:    $(xcrun --sdk iphoneos --show-sdk-path)"
+          echo "simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-path)"
+
+      - name: Cache source tarballs
+        uses: actions/cache@v5
+        with:
+          path: ios/.cache/tarballs
+          key: ios-deps-tarballs-${{ hashFiles('ios/deps/manifest.txt') }}
+          restore-keys: |
+            ios-deps-tarballs-
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        # ccache only speeds up *reruns*; a clean build (the common case here)
+        # leans on the parallel source prefetch in build-ios-deps.sh instead.
+        with:
+          path: ios/.cache/ccache
+          key: ios-deps-ccache-${{ matrix.platform }}-${{ hashFiles('ios/deps/manifest.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ios-deps-ccache-${{ matrix.platform }}-${{ hashFiles('ios/deps/manifest.txt') }}-
+            ios-deps-ccache-${{ matrix.platform }}-
+
+      - name: Build dependency sysroot (${{ matrix.platform }})
+        env:
+          NORDSTJERNEN_IOS_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euxo pipefail
+          chmod +x ios/scripts/*.sh
+          ios/scripts/build-ios-deps.sh "${{ matrix.platform }}"
+
+      - name: Upload build logs (${{ matrix.platform }})
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nordstjernen-ios-build-logs-${{ matrix.platform }}
+          path: |
+            ios/cross/*.cross
+            ios/.build/${{ matrix.platform }}/**/*.log
+            ios/.build/${{ matrix.platform }}/**/meson-logs/**
+            ios/.build/${{ matrix.platform }}/**/CMakeFiles/CMake*.yaml
+            ios/.build/${{ matrix.platform }}/**/CMakeFiles/CMake*.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Sanity-check artifact contents
+        env:
+          NORDSTJERNEN_IOS_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euo pipefail
+          PREFIX="${NORDSTJERNEN_IOS_SYSROOT}/${{ matrix.platform }}"
+          echo "== static libraries =="; ls -1 "${PREFIX}/lib/"*.a
+          echo "== pkg-config modules =="; ls -1 "${PREFIX}/lib/pkgconfig/"*.pc
+          # Every key module must be discoverable via pkg-config.
+          export PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig"
+          for m in zlib libffi libpcre2-8 expat gobject-2.0 gio-2.0 \
+                   freetype2 libpng harfbuzz fontconfig pixman-1 fribidi \
+                   cairo pango pangocairo libcrypto libssl libnghttp2 \
+                   libbrotlidec libbrotlienc libbrotlicommon \
+                   libcurl sqlite3 uchardet libpsl libwebp; do
+            pkg-config --exists "$m" && echo "ok   $m $(pkg-config --modversion "$m")" \
+                                     || { echo "MISSING $m"; exit 1; }
+          done
+          # Every shipped archive must be an arm64 Mach-O static library. A dep
+          # that silently dropped the -arch/-isysroot flags would otherwise ship
+          # for the wrong slice and pass every other check, so assert the arch of
+          # each .a rather than spot-checking one.
+          fail=0
+          for lib in "${PREFIX}/lib/"*.a; do
+            base="$(basename "${lib}")"
+            archs="$(lipo -archs "${lib}" 2>/dev/null || true)"
+            case " ${archs} " in
+              *" arm64 "*) : ;;
+              *) echo "::error::${base} is not arm64 (got '${archs}')"; fail=1 ;;
+            esac
+          done
+          [ "${fail}" -eq 0 ] || { echo "::error::one or more archives are not arm64"; exit 1; }
+          echo "ok   all $(ls -1 "${PREFIX}/lib/"*.a | wc -l | tr -d ' ') archives are arm64"
+          # Confirm libcurl was actually built against brotli (decodes
+          # `Content-Encoding: br`): a brotli-enabled static libcurl carries
+          # undefined BrotliDecoder* references.
+          if nm "${PREFIX}/lib/libcurl.a" 2>/dev/null | grep -q 'BrotliDecoder'; then
+            echo "ok   libcurl.a references brotli (Content-Encoding: br enabled)"
+          else
+            echo "::error::libcurl.a does not reference brotli"; exit 1
+          fi
+
+      - name: Stage artifact tree
+        env:
+          NORDSTJERNEN_IOS_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euo pipefail
+          OUT="${{ github.workspace }}/artifact"
+          mkdir -p "${OUT}"
+          cp -a "${NORDSTJERNEN_IOS_SYSROOT}/${{ matrix.platform }}" "${OUT}/"
+          cp ios/deps/manifest.txt "${OUT}/${{ matrix.platform }}/MANIFEST.txt"
+          case "${{ matrix.platform }}" in
+            device)    SDK=iphoneos ;;
+            simulator) SDK=iphonesimulator ;;
+          esac
+          {
+            echo "platform=${{ matrix.platform }}"
+            echo "sdk=${SDK}"
+            echo "arch=arm64"
+            echo "deployment_target=${IOS_DEPLOYMENT_TARGET}"
+            echo "xcode=$(xcodebuild -version | head -1)"
+            echo "commit=${{ github.sha }}"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "${OUT}/${{ matrix.platform }}/BUILDINFO.txt"
+
+      - name: Upload sysroot artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nordstjernen-ios-sysroot-${{ matrix.platform }}
+          # Upload the parent dir so the artifact keeps a top-level <platform>/
+          # directory (include/, lib/, lib/pkgconfig/) for build-deps.sh.
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+  # Aggregate both platforms into a single public GitHub Release so the sysroots
+  # are downloadable with plain curl (no auth, no artifact expiry). Runs only
+  # when all matrix builds succeed, and only on main / manual / scheduled runs.
+  publish:
+    name: publish-release
+    needs: build
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all sysroot artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: nordstjernen-ios-sysroot-*
+          path: artifacts
+
+      - name: Package per-platform tarballs and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for platform in device simulator; do
+            d="artifacts/nordstjernen-ios-sysroot-${platform}"
+            test -d "${d}/${platform}" || { echo "::error::missing sysroot for ${platform}"; exit 1; }
+            # Tarball keeps a top-level <platform>/ dir so it extracts directly
+            # into $NORDSTJERNEN_IOS_SYSROOT.
+            tar -C "${d}" -czf "dist/nordstjernen-ios-sysroot-${platform}.tar.gz" "${platform}"
+          done
+          cp ios/deps/manifest.txt dist/manifest.txt
+          ( cd dist && shasum -a 256 ./*.tar.gz manifest.txt > SHA256SUMS )
+          echo "== release assets =="; ls -lh dist
+
+      - name: Publish rolling 'ios-sysroot-latest' release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-sysroot-latest
+          name: iOS prebuilt sysroot (latest)
+          body: |
+            Prebuilt iOS dependency sysroot for the Nordstjernen engine.
+
+            - Deployment target: iOS `${{ env.IOS_DEPLOYMENT_TARGET }}`
+            - Platforms: device (`iphoneos`, arm64), simulator (`iphonesimulator`, arm64)
+            - Libraries: static (`.a`)
+            - Source commit: `${{ github.sha }}`
+            - Pinned versions: see `manifest.txt`; checksums in `SHA256SUMS`.
+
+            Consume with:
+            ```bash
+            export NORDSTJERNEN_IOS_SYSROOT="$HOME/.cache/nordstjernen-ios-sysroot"
+            ios/scripts/fetch-prebuilt-deps.sh --sysroot "$NORDSTJERNEN_IOS_SYSROOT"
+            ```
+          files: |
+            dist/nordstjernen-ios-sysroot-*.tar.gz
+            dist/SHA256SUMS
+            dist/manifest.txt
+          fail_on_unmatched_files: true
