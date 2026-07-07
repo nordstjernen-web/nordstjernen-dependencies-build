@@ -76,9 +76,12 @@ dep_libffi() {
 
 dep_pcre2() {
   local s; s="$(fetch_source pcre2)"
+  # JIT is OFF on iOS: the platform forbids executable memory / JIT for normal
+  # (non-entitled) apps, and pcre2's sljit allocator does not compile for the
+  # iOS target. GLib's regex works fine with the interpreted matcher.
   build_cmake "${s}" \
     -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON \
-    -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_SUPPORT_JIT=ON
+    -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_SUPPORT_JIT=OFF
 }
 
 dep_expat() {
