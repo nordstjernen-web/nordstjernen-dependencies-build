@@ -3,21 +3,27 @@
 Mobile build support for the [Nordstjernen](https://github.com/nordstjernen-web/nordstjernen)
 web browser engine.
 
-This repository hosts the CI/CD that cross-compiles **all** of Nordstjernen's
-native third-party dependencies — for every **Android** ABI and for **iOS**
-(device + simulator) — and publishes them as downloadable **prebuilt sysroots**,
-so the engine's build scripts (and local developers) can consume prebuilt
-binaries instead of compiling the entire dependency stack from scratch.
+This repository hosts the CI/CD that builds Nordstjernen's native third-party
+dependencies — cross-compiled for every **Android** ABI and for **iOS** (device
++ simulator), and a development **GTK 4** for desktop **Linux** — and publishes
+them as downloadable **prebuilt binaries**, so the engine's build scripts (and
+local developers) can consume them instead of compiling from scratch.
 
 - **Android:** `android/` → `sysroot-latest` release, consumed by nordstjernen's
   `android/scripts/build-deps.sh`.
 - **iOS:** `ios/` → `ios-sysroot-latest` release, consumed by nordstjernen's
   `ios/scripts/build-engine.sh`. **Newly authored — not yet verified by a green
   CI run** (see [`ios/README.md`](ios/README.md)).
+- **Linux:** `linux/` → `linux-gtk-latest` release, a bleeding-edge dev GTK 4
+  overlay for testing the desktop engine on Ubuntu (see
+  [`linux/README.md`](linux/README.md)).
 
-The engine itself drops GTK 4, librsvg and gdk-pixbuf on both platforms, so the
+On **mobile** the engine drops GTK 4, librsvg and gdk-pixbuf, so the Android/iOS
 dependency set is the GLib/cairo/pango graphics stack plus the network, storage
-and image libraries — all plain C, no Rust toolchain.
+and image libraries — all plain C, no Rust toolchain. The **desktop Linux** port
+*does* use GTK 4: it runs on a normal Ubuntu with a full system graphics stack,
+so the Linux build compiles only GTK itself (against the system libraries)
+rather than the whole stack.
 
 ## Libraries built
 
@@ -93,3 +99,21 @@ Then run nordstjernen's `ios/scripts/build-engine.sh device` (and `simulator`).
 - **CI:** [`.github/workflows/build-ios-deps.yml`](.github/workflows/build-ios-deps.yml)
   publishes `ios-sysroot-latest`. See [`ios/README.md`](ios/README.md) for the
   current (experimental) status.
+
+### Linux (desktop GTK)
+
+```bash
+export NORDSTJERNEN_LINUX_SYSROOT="$HOME/.cache/nordstjernen-linux-sysroot"
+linux/scripts/fetch-prebuilt-deps.sh --sysroot "$NORDSTJERNEN_LINUX_SYSROOT"
+```
+
+Then put the overlay ahead of the system GTK (`PKG_CONFIG_PATH` +
+`LD_LIBRARY_PATH`, see [`linux/README.md`](linux/README.md)) and build/run the
+desktop engine as usual.
+
+- **Targets:** a development **GTK 4** (`4.23.2`, the series toward GTK 4.24)
+  built on Ubuntu against the system graphics stack; `x86_64`, shared libraries.
+  Only GTK is built — every other dependency comes from the distro — so consume
+  it on the same Ubuntu release it was built on.
+- **CI:** [`.github/workflows/build-linux-deps.yml`](.github/workflows/build-linux-deps.yml)
+  publishes `linux-gtk-latest` on every successful build of `main`.

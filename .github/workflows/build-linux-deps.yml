@@ -1,0 +1,247 @@
+name: build-linux-deps
+
+# Compile a bleeding-edge development GTK 4 on Ubuntu, against the distro's
+# system graphics stack, and publish it as a downloadable "Linux GTK overlay"
+# so the desktop Nordstjernen engine (and local devs) can test the latest dev
+# GTK without waiting for Ubuntu to package it.
+#
+# Unlike build-deps.yml (Android) and build-ios-deps.yml (iOS), this does NOT
+# cross-compile the whole GLib/cairo/pango stack: the desktop port builds
+# against the system libraries, so only GTK itself is built from source.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'linux/deps/**'
+      - 'linux/scripts/**'
+      - '.github/workflows/build-linux-deps.yml'
+  schedule:
+    # Nightly rebuild (05:17 UTC) to catch toolchain/runner drift.
+    - cron: '17 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-linux-deps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NORDSTJERNEN_LINUX_VERBOSE: '1'
+
+jobs:
+  build:
+    name: ${{ matrix.arch }}
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Ensure manifest is fully pinned (main only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          if awk '!/^[[:space:]]*#/ && NF>=4 {print $3}' linux/deps/manifest.txt \
+               | grep -qiw 'AUTO'; then
+            echo "::error::manifest still has AUTO (unpinned) checksums; pin them before merging to main"
+            exit 1
+          fi
+          echo "ok: all manifest entries are pinned"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools and GTK build dependencies
+        run: |
+          set -euxo pipefail
+          # Enable deb-src so `apt build-dep` can resolve GTK's build deps.
+          # Modern Ubuntu images use the deb822 ubuntu.sources; older ones use
+          # the legacy sources.list. Handle both idempotently.
+          if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+            sudo sed -i -E 's/^Types:.*/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          fi
+          if [ -f /etc/apt/sources.list ]; then
+            sudo sed -i 's/^# *deb-src/deb-src/' /etc/apt/sources.list || true
+          fi
+          sudo apt-get update
+          # Pull GTK's build dependencies straight from the distro: this is the
+          # authoritative, rename-proof way to get glib, cairo, pango,
+          # gdk-pixbuf, graphene, libepoxy, harfbuzz, wayland, the Vulkan shader
+          # compiler, etc. for the exact Ubuntu we build on.
+          sudo apt-get build-dep -y gtk4 || sudo apt-get build-dep -y libgtk-4-dev
+          # Tooling not guaranteed to be in the build-dep set.
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build pkg-config cmake ccache \
+            gettext ca-certificates
+          # Recent Meson/Ninja from PyPI (Ubuntu's can lag GTK's requirement).
+          python -m pip install --upgrade pip
+          python -m pip install 'meson>=1.5.0' ninja
+          echo "meson $(meson --version), ninja $(ninja --version), cmake $(cmake --version | head -1)"
+          echo "gcc $(gcc -dumpfullversion 2>/dev/null || gcc -dumpversion)"
+
+      - name: Cache source tarballs
+        uses: actions/cache@v5
+        with:
+          path: linux/.cache/tarballs
+          key: linux-deps-tarballs-${{ hashFiles('linux/deps/manifest.txt') }}
+          restore-keys: |
+            linux-deps-tarballs-
+
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: linux/.cache/ccache
+          key: linux-deps-ccache-${{ matrix.arch }}-${{ hashFiles('linux/deps/manifest.txt') }}-${{ github.sha }}
+          restore-keys: |
+            linux-deps-ccache-${{ matrix.arch }}-${{ hashFiles('linux/deps/manifest.txt') }}-
+            linux-deps-ccache-${{ matrix.arch }}-
+
+      - name: Build GTK overlay (${{ matrix.arch }})
+        env:
+          NORDSTJERNEN_LINUX_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euxo pipefail
+          chmod +x linux/scripts/*.sh
+          linux/scripts/build-linux-deps.sh "${{ matrix.arch }}"
+
+      - name: Upload build logs (${{ matrix.arch }})
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nordstjernen-linux-build-logs-${{ matrix.arch }}
+          path: |
+            linux/.build/${{ matrix.arch }}/**/*.log
+            linux/.build/${{ matrix.arch }}/**/meson-logs/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Sanity-check artifact contents
+        env:
+          NORDSTJERNEN_LINUX_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euo pipefail
+          PREFIX="${NORDSTJERNEN_LINUX_SYSROOT}/${{ matrix.arch }}"
+          echo "== shared libraries =="; ls -1 "${PREFIX}/lib/"libgtk-4.so*
+          echo "== pkg-config modules =="; ls -1 "${PREFIX}/lib/pkgconfig/"gtk4*.pc
+          # gtk4 must be discoverable via pkg-config and report the pinned
+          # version. Prepend our prefix; system dirs stay on the default search
+          # path so gtk4.pc's Requires (glib, cairo, pango, ...) still resolve.
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+          pkg-config --exists gtk4 || { echo "::error::gtk4 not found via pkg-config"; exit 1; }
+          GOT="$(pkg-config --modversion gtk4)"
+          WANT="$(awk '$1=="gtk"{print $2}' linux/deps/manifest.txt)"
+          echo "gtk4 pkg-config version: ${GOT} (manifest pins ${WANT})"
+          [ "${GOT}" = "${WANT}" ] || { echo "::error::gtk4 is ${GOT}, expected ${WANT}"; exit 1; }
+          # The built library must be a real ELF shared object with a SONAME.
+          SO="$(ls -1 "${PREFIX}/lib/"libgtk-4.so.* 2>/dev/null | head -1)"
+          if command -v readelf >/dev/null; then
+            readelf -dW "${SO}" | grep -q 'SONAME' \
+              || { echo "::error::${SO} has no SONAME"; exit 1; }
+            # Confirm GTK linked against the system stack it was built on.
+            readelf -dW "${SO}" | grep -Eq 'NEEDED.*(libglib-2\.0|libgobject-2\.0)' \
+              || { echo "::error::libgtk-4 does not link glib/gobject"; exit 1; }
+            echo "ok   libgtk-4 links the system GLib stack"
+          fi
+          echo "ok   gtk4 ${GOT} built and installed"
+
+      - name: Stage artifact tree
+        env:
+          NORDSTJERNEN_LINUX_SYSROOT: ${{ github.workspace }}/sysroot
+        run: |
+          set -euo pipefail
+          OUT="${{ github.workspace }}/artifact"
+          mkdir -p "${OUT}"
+          cp -a "${NORDSTJERNEN_LINUX_SYSROOT}/${{ matrix.arch }}" "${OUT}/"
+          cp linux/deps/manifest.txt "${OUT}/${{ matrix.arch }}/MANIFEST.txt"
+          {
+            echo "arch=${{ matrix.arch }}"
+            echo "os=$(. /etc/os-release && echo "${PRETTY_NAME}")"
+            echo "gtk=$(awk '$1=="gtk"{print $2}' linux/deps/manifest.txt)"
+            echo "commit=${{ github.sha }}"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "${OUT}/${{ matrix.arch }}/BUILDINFO.txt"
+
+      - name: Upload GTK overlay artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nordstjernen-linux-gtk-${{ matrix.arch }}
+          # Upload the parent dir so the artifact keeps a top-level <arch>/
+          # directory (include/, lib/, lib/pkgconfig/) for the consumer.
+          path: artifact/
+          if-no-files-found: error
+          retention-days: 90
+
+  # Aggregate the arch(es) into a single public GitHub Release so the overlay is
+  # downloadable with plain curl. Runs only when the build succeeds, and only on
+  # main / manual / scheduled runs.
+  publish:
+    name: publish-release
+    needs: build
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all overlay artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: nordstjernen-linux-gtk-*
+          path: artifacts
+
+      - name: Package per-arch tarballs and checksums
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for arch in x86_64; do
+            d="artifacts/nordstjernen-linux-gtk-${arch}"
+            test -d "${d}/${arch}" || { echo "::error::missing overlay for ${arch}"; exit 1; }
+            # Tarball keeps a top-level <arch>/ dir so it extracts directly into
+            # $NORDSTJERNEN_LINUX_SYSROOT.
+            tar -C "${d}" -czf "dist/nordstjernen-linux-gtk-${arch}.tar.gz" "${arch}"
+          done
+          cp linux/deps/manifest.txt dist/manifest.txt
+          ( cd dist && sha256sum ./*.tar.gz manifest.txt > SHA256SUMS )
+          echo "== release assets =="; ls -lh dist
+
+      - name: Publish rolling 'linux-gtk-latest' release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: linux-gtk-latest
+          name: Linux GTK overlay (latest)
+          body: |
+            Prebuilt development GTK 4 overlay for testing the desktop
+            Nordstjernen engine on Ubuntu.
+
+            - GTK: `${{ github.sha }}` build; pinned version in `manifest.txt`
+            - Built on Ubuntu against the distro's system graphics stack
+            - Arch: x86_64 (shared libraries)
+            - Checksums in `SHA256SUMS`.
+
+            This overlay only contains GTK; every other dependency (glib, cairo,
+            pango, gdk-pixbuf, graphene, libepoxy, ...) comes from the system, so
+            consume it on the same Ubuntu release it was built on.
+
+            Consume with:
+            ```bash
+            export NORDSTJERNEN_LINUX_SYSROOT="$HOME/.cache/nordstjernen-linux-sysroot"
+            linux/scripts/fetch-prebuilt-deps.sh --sysroot "$NORDSTJERNEN_LINUX_SYSROOT"
+            ```
+          files: |
+            dist/nordstjernen-linux-gtk-*.tar.gz
+            dist/SHA256SUMS
+            dist/manifest.txt
+          fail_on_unmatched_files: true

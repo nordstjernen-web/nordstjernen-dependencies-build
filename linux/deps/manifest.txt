@@ -1,0 +1,34 @@
+# Nordstjernen Linux prebuilt-dependency manifest
+#
+# Pinned third-party native dependencies that are compiled on Ubuntu into the
+# Linux "GTK overlay" consumed when testing the desktop Nordstjernen engine.
+#
+# One record per line, whitespace separated:
+#
+#   <name>  <version>  <sha256>  <url>
+#
+# - <name>    must match the build function name in build-linux-deps.sh
+# - <sha256>  is verified against the downloaded tarball before extraction.
+#             The literal value AUTO means "not yet pinned": CI downloads the
+#             tarball, prints its real sha256 (a `PINME <name> <sha>` line) and
+#             proceeds WITHOUT verifying. AUTO must never reach main -- the
+#             build-linux-deps workflow fails the build on main if any entry is
+#             still AUTO. Replace AUTO with the printed checksum to pin it.
+# - lines beginning with '#' and blank lines are ignored
+#
+# Unlike the android/ and ios/ sysroots (which cross-compile the whole
+# GLib/cairo/pango stack because mobile drops system libraries), the desktop
+# Linux port builds *against* Ubuntu's system graphics stack. The engine only
+# needs one piece that Ubuntu does not package: a bleeding-edge development
+# release of GTK 4. So this manifest pins GTK itself and nothing else; every
+# other GTK dependency (glib, cairo, pango, gdk-pixbuf, graphene, libepoxy,
+# harfbuzz, wayland, ...) is provided by the distro via `apt build-dep gtk4`.
+#
+# Versions below were pinned against upstream release tarballs and their
+# checksums verified at pin time. Bump deliberately and re-verify the sha256.
+
+# --- GTK (development release, not packaged by Ubuntu) ----------------------
+# 4.23.x is the unstable development series leading to GTK 4.24. Ubuntu ships
+# only stable GTK, so we build this dev release from the GNOME source tarball
+# to test the latest Nordstjernen against it.
+gtk         4.23.2    AUTO  https://download.gnome.org/sources/gtk/4.23/gtk-4.23.2.tar.xz

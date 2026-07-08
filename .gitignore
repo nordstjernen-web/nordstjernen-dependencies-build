@@ -19,3 +19,8 @@
 /ios/.build/
 /ios/.cache/
 /ios/sysroot/
+
+# Linux build scratch, download cache and installed GTK overlay.
+/linux/.build/
+/linux/.cache/
+/linux/sysroot/
