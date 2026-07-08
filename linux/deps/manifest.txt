@@ -33,7 +33,7 @@
 # code), so we build a new-enough release into our prefix; it installs
 # wayland-protocols.pc into share/pkgconfig, which our prefix puts ahead of the
 # system copy so GTK picks it up.
-wayland-protocols 1.48 AUTO  https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.48/wayland-protocols-1.48.tar.gz
+wayland-protocols 1.48 c563af8e2e784f9599fe23819a3fc5e7d946e76db9f90a2e3ba6c9a869a52911  https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.48/wayland-protocols-1.48.tar.gz
 
 # --- GTK (development release, not packaged by Ubuntu) ----------------------
 # 4.23.x is the unstable development series leading to GTK 4.24. Ubuntu ships
