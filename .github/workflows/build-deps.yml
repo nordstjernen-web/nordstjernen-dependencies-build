@@ -26,7 +26,7 @@ concurrency:
 
 env:
   NDK_VERSION: '27.3.13750724'
-  ANDROID_API: '35'
+  ANDROID_API: '34'
   NORDSTJERNEN_ANDROID_VERBOSE: '1'
 
 jobs:

@@ -152,7 +152,7 @@ Then point the engine's build at `$NORDSTJERNEN_ANDROID_SYSROOT` and run
 `build-deps.sh` as usual.
 
 - **Targets:** NDK `27.3.13750724` (r27); ABIs `arm64-v8a`, `x86_64`;
-  minSdk 35; 16 KB page size; shared libraries.
+  minSdk 34 (Android 14); 16 KB page size; shared libraries.
 - **CI:** [`.github/workflows/build-deps.yml`](.github/workflows/build-deps.yml)
   publishes [`sysroot-latest`](https://github.com/nordstjernen-web/nordstjernen-dependencies-build/releases/tag/sysroot-latest)
   on every successful build of `main`.

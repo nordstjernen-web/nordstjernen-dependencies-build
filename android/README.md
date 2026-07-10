@@ -22,7 +22,7 @@ binaries instead of compiling the world.
 |----------------|--------------------------------------------------|
 | NDK            | `27.3.13750724` (r27)                            |
 | ABIs           | `arm64-v8a`, `x86_64`                            |
-| API / minSdk   | `35`                                             |
+| API / minSdk   | `34` (Android 14)                                |
 | Page size      | every link passes `-Wl,-z,max-page-size=16384` (16 KB pages, Google Play) |
 | Build systems  | Meson + Ninja + pkg-config, CMake ≥ 3.22 where required |
 
@@ -57,8 +57,9 @@ order:
 
 ### Android libc (bionic) notes
 
-The `API / minSdk` level above is not arbitrary — glib drags in two libc
-features that Android's bionic only provides on newer API levels:
+The `API / minSdk` level tracks the engine app's `minSdk` (currently **34**,
+Android 14) and must stay **≥ 28**, because glib drags in two libc features
+that Android's bionic only provides on newer API levels:
 
 - **`iconv`** — `iconv_open`/`iconv`/`iconv_close` were added to bionic at
   **API 28**. Below that, glib's meson configure aborts with
