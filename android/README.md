@@ -89,7 +89,7 @@ manifest.txt
 Because the release is public, no authentication (and no `gh` CLI) is needed —
 just `curl`, `tar` and `sha256sum`.
 
-1. **Download** and lay the sysroots out (downloads all four ABIs and verifies
+1. **Download** and lay the sysroots out (downloads both ABIs and verifies
    each against `SHA256SUMS`):
 
    ```bash
@@ -168,7 +168,7 @@ key is derived from the manifest, so a bump invalidates the cache automatically.
 `build-android-deps.sh` prefetches **all** source tarballs in parallel (a few at
 a time, `PREFETCH_JOBS=4` by default) before the serial compile loop, so network
 latency overlaps instead of stalling each step. This is independent of the CI
-caches — a completely cold build still benefits. The four ABIs build as parallel
+caches — a completely cold build still benefits. The ABIs build as parallel
 matrix jobs, and `ccache` only accelerates *reruns*.
 
 ## CI triggers

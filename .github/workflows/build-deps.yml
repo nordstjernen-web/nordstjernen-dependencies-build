@@ -40,12 +40,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install build tools
         run: |
@@ -76,7 +76,7 @@ jobs:
           echo "Installed NDK at ${NDK_HOME}"
 
       - name: Cache source tarballs
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: android/.cache/tarballs
           key: deps-tarballs-${{ hashFiles('android/deps/manifest.txt') }}
@@ -84,7 +84,7 @@ jobs:
             deps-tarballs-
 
       - name: Cache ccache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         # ccache only speeds up *reruns*; a clean build (the common case here)
         # leans on the parallel source prefetch in build-android-deps.sh instead.
         with:
@@ -213,7 +213,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download all sysroot artifacts
         uses: actions/download-artifact@v8
@@ -237,7 +237,7 @@ jobs:
           echo "== release assets =="; ls -lh dist
 
       - name: Publish rolling 'sysroot-latest' release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: sysroot-latest
           name: Android prebuilt sysroot (latest)

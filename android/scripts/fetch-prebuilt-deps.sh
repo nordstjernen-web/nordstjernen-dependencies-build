@@ -17,7 +17,7 @@
 #   fetch-prebuilt-deps.sh [options]
 #     --sysroot DIR     destination base (default: $NORDSTJERNEN_ANDROID_SYSROOT
 #                       or android/sysroot)
-#     --abi ABI         download only one ABI (default: all four)
+#     --abi ABI         download only one ABI (default: all)
 #     --repo OWNER/REPO GitHub repo (default: nordstjernen-web/nordstjernen-dependencies-build)
 #     --tag TAG         release tag to download (default: sysroot-latest)
 

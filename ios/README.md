@@ -18,14 +18,11 @@ binaries instead of compiling the world.
 
 ## Status
 
-**This iOS infrastructure is newly authored and has not yet completed a green CI
-run.** It mirrors the battle-tested Android tooling in
-[`../android`](../android) line for line, adapted to the Xcode/iOS toolchain, but
-the recipes have not been verified end-to-end on a macOS runner yet. Treat the
-published sysroot (once it exists) as **experimental** until the
-[`build-ios-deps`](../.github/workflows/build-ios-deps.yml) workflow has a
-recorded successful run. Expect to iterate on individual dependency recipes as
-real build logs come in.
+The `build-ios-deps` workflow builds both platforms and publishes the
+`ios-sysroot-latest` release on every green run of `main` (nightly and on
+push). The tooling mirrors the Android tooling in [`../android`](../android),
+adapted to the Xcode/iOS toolchain. `libvpx` (VP8/VP9) is the one Android
+sysroot library not yet built for iOS (see the root README).
 
 ## Targets
 
@@ -190,5 +187,5 @@ The `build-ios-deps` workflow runs on:
   workflow file,
 - a nightly `schedule` (04:47 UTC) to catch toolchain / runner drift.
 
-The build matrix runs on `macos-14` (Apple Silicon) runners so the iOS SDK and
+The build matrix runs on `macos-15` (Apple Silicon) runners so the iOS SDK and
 `xcrun` are available; the release-publishing job runs on Linux.

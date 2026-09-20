@@ -19,12 +19,12 @@
 
 # --- Base -------------------------------------------------------------------
 zlib        1.3.2     bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
-libffi      3.5.2     f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc  https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
-pcre2       10.47     47fe8c99461250d42f89e6e8fdaeba9da057855d06eb7fc08d9ca03fd08d7bc7  https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2
-expat       2.8.1     10b195ee78160a908388180a8fe3603d4e9a12f4755fbf5f3816b23a9d750da0  https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz
+libffi      3.8.0     7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4  https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz
+pcre2       10.48     b6c68fdf6f3ac31388b50aa89ff0fc49c00c987c16e7b5146491d12003f2c8ed  https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.48/pcre2-10.48.tar.bz2
+expat       2.8.4     656ae1cc8da3b4ea513bb4e254f33e6243938084c0ec6239da873376b09985a7  https://github.com/libexpat/libexpat/releases/download/R_2_8_4/expat-2.8.4.tar.xz
 
 # --- GLib stack -------------------------------------------------------------
-glib        2.88.1    51ab804c56f6eab3e5045c774d1290ac5e4c923d4f9a3d8e33123bee45c1840e  https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz
+glib        2.90.0    17d15cac2af80a33271127408e0abc2748eb297c595c2a26409e81e14e7d1b8f  https://download.gnome.org/sources/glib/2.90/glib-2.90.0.tar.xz
 # proxy-libintl is not a standalone sysroot library: Apple's C library ships no
 # gettext, so glib uses its bundled proxy-libintl meson subproject for libintl.
 # We vendor the pinned source into glib's subprojects/ (see dep_glib) because
@@ -35,27 +35,27 @@ proxy-libintl 0.5    f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda178575
 # --- Text / font ------------------------------------------------------------
 freetype    2.14.3    36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f  https://downloads.sourceforge.net/project/freetype/freetype2/2.14.3/freetype-2.14.3.tar.xz
 libpng      1.6.58    a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf  https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.58.tar.gz
-harfbuzz    14.2.1    a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e  https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz
-fontconfig  2.18.1    e9309564717b6301230112b173f36c288489479d381d2f0add1210ca5b16ba7e  https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.1/fontconfig-2.18.1.tar.gz
+harfbuzz    14.4.0    2357ed966c6ced7bfa720b0640c0231065af01158fbea215093ffa15aed44371  https://github.com/harfbuzz/harfbuzz/releases/download/14.4.0/harfbuzz-14.4.0.tar.xz
+fontconfig  2.18.3    9ae01e1d53acdef56010c5451cd34aa41d325b2faccd8606448d8fa01b2496b3  https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.3/fontconfig-2.18.3.tar.gz
 pixman      0.46.4    d09c44ebc3bd5bee7021c79f922fe8fb2fb57f7320f55e97ff9914d2346a591c  https://cairographics.org/releases/pixman-0.46.4.tar.gz
 fribidi     1.0.16    1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c  https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz
 
 # --- Graphics ---------------------------------------------------------------
 cairo       1.18.4    445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599c32ccb  https://cairographics.org/releases/cairo-1.18.4.tar.xz
-pango       1.57.1    e65d6d117080dc3aeeb7d8b4b3b518f7383aa2e6cfce23117c623cd624764c2f  https://download.gnome.org/sources/pango/1.57/pango-1.57.1.tar.xz
+pango       1.58.2    342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a  https://download.gnome.org/sources/pango/1.58/pango-1.58.2.tar.xz
 
 # --- Network ----------------------------------------------------------------
-openssl     3.6.3     243a86649cf6f23eeb6a2ff2456e09e5d77dd9018a54d3d96b0c6bdd6ba6c7f1  https://github.com/openssl/openssl/releases/download/openssl-3.6.3/openssl-3.6.3.tar.gz
-nghttp2     1.69.0    c866b7477cbb7512ab6863a685027adbb1bb8da8fc3bab7429ed43d3281d5aa9  https://github.com/nghttp2/nghttp2/releases/download/v1.69.0/nghttp2-1.69.0.tar.gz
+openssl     3.6.4     9bffaa1ad1e07b354c21bd3324ec02fa15579f45a7d0494b3e74bc449b7333ef  https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz
+nghttp2     1.70.0    aa317e2cf9dca6afa0aed68f8fad6ff303ec6982e25a78c75c0b65e2b9b3ded5  https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.gz
 # brotli powers HTTP `Content-Encoding: br`, which the vast majority of sites now
 # serve; building it lets libcurl (and thus the browser) decode brotli natively.
 brotli      1.2.0     816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec  https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz
-curl        8.20.0    4be48e69cf467246cb97d369b85d78a08528f2b37cffef2418ee16e6a4eb596e  https://curl.se/download/curl-8.20.0.tar.bz2
+curl        8.22.0    5d956a6a22b3c279f50c421ee5d3c9e9d660cb6f115dcf881b579e952130549c  https://curl.se/download/curl-8.22.0.tar.bz2
 
 # --- Misc -------------------------------------------------------------------
-sqlite3     3.53.2    588ad51949419a56ebe81fe56193d510c559eb94c9a57748387860b5d3069316  https://www.sqlite.org/2026/sqlite-autoconf-3530200.tar.gz
+sqlite3     3.53.4    0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c  https://www.sqlite.org/2026/sqlite-autoconf-3530400.tar.gz
 uchardet    0.0.8     e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0  https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
-libpsl      0.21.5    1dcc9ceae8b128f3c0b3f654decd0e1e891afc6ff81098f227ef260449dae208  https://github.com/rockdaboot/libpsl/releases/download/0.21.5/libpsl-0.21.5.tar.gz
+libpsl      0.23.3    93941f85a1e7bd593fa94f299233cb5dfc91cd144fd9a78a6ceb75001c5b03be  https://github.com/rockdaboot/libpsl/releases/download/0.23.3/libpsl-0.23.3.tar.gz
 libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564  https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz
 
 # --- Media (video / audio codecs) -------------------------------------------
@@ -65,9 +65,9 @@ libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e3
 # upstream revisions; we pin the latest upstream *stable release* (>= Firefox's
 # revision in every case, so we carry its security fixes). Codecs are the browser
 # attack surface most exposed to hostile input, hence exact version + sha256
-# pins. libvpx (VP8/VP9) is deliberately not here yet: its bespoke,
-# ffmpeg-style configure needs a custom cross wrapper (see README) and its own
-# CI-verified change. On iOS these build as static (.a), the platform default;
+# pins. libvpx (VP8/VP9) is built for Android but not for iOS yet: its
+# ffmpeg-style configure hardcodes the iphoneos SDK and needs separate
+# device/simulator handling (see README). On iOS these build as static (.a);
 # H.264/HEVC/AAC come from the OS (VideoToolbox/AudioToolbox), not from here.
 #   ogg     -> container framing        (dav1d/opus/vorbis are the codecs)
 #   vorbis  -> Vorbis audio  (needs ogg; find_package(Ogg) resolves in-prefix)
@@ -76,4 +76,4 @@ libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e3
 libogg      1.3.6     83e6704730683d004d20e21b8f7f55dcb3383cdf84c0daedf30bde175f774638  https://ftp.osuosl.org/pub/xiph/releases/ogg/libogg-1.3.6.tar.gz
 libvorbis   1.3.7     b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b  https://ftp.osuosl.org/pub/xiph/releases/vorbis/libvorbis-1.3.7.tar.xz
 opus        1.6.1     6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1  https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz
-dav1d       1.5.3     e099f53253f6c247580c554d53a13f1040638f2066edc3c740e4c2f15174ce22  https://code.videolan.org/videolan/dav1d/-/archive/1.5.3/dav1d-1.5.3.tar.bz2
+dav1d       1.5.4     2abfb0c89212e6e4733a54e0ae509ec00a5b845a6360946f918806e14aedb011  https://code.videolan.org/videolan/dav1d/-/archive/1.5.4/dav1d-1.5.4.tar.bz2

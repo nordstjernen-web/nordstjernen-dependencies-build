@@ -17,7 +17,7 @@ comes from Ubuntu via `apt build-dep gtk4`.
 
 | Setting        | Value                                                        |
 |----------------|--------------------------------------------------------------|
-| GTK            | `4.23.2` (development series toward GTK 4.24)                |
+| GTK            | `4.23.3` (development series toward GTK 4.24)                |
 | Build host     | Ubuntu (`ubuntu-26.04` runner)                              |
 | Arch           | `x86_64` (shared libraries)                                 |
 | Build system   | Meson + Ninja + pkg-config                                  |
@@ -95,7 +95,7 @@ linux/scripts/build-linux-deps.sh    # defaults to the host arch (x86_64)
 Useful flags:
 
 - `--sysroot DIR` — install base (default `$NORDSTJERNEN_LINUX_SYSROOT`).
-- `--only name1,name2` — build only some deps (there is only `gtk` today).
+- `--only name1,name2` — build only some deps (`wayland-protocols`, `gtk`).
 
 ## Layout
 
