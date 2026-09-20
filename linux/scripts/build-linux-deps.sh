@@ -92,7 +92,7 @@ dep_gtk() {
     -Dbuild-tests=false \
     -Dbuild-testsuite=false \
     -Dbuild-examples=false \
-    -Ddemos=false \
+    -Dbuild-demos=false \
     -Dmedia-gstreamer=disabled
 }
 

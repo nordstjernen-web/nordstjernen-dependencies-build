@@ -190,5 +190,5 @@ The `build-ios-deps` workflow runs on:
   workflow file,
 - a nightly `schedule` (04:47 UTC) to catch toolchain / runner drift.
 
-The build matrix runs on `macos-14` (Apple Silicon) runners so the iOS SDK and
+The build matrix runs on `macos-15` (Apple Silicon) runners so the iOS SDK and
 `xcrun` are available; the release-publishing job runs on Linux.

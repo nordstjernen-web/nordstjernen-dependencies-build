@@ -17,7 +17,7 @@ comes from Ubuntu via `apt build-dep gtk4`.
 
 | Setting        | Value                                                        |
 |----------------|--------------------------------------------------------------|
-| GTK            | `4.23.2` (development series toward GTK 4.24)                |
+| GTK            | `4.23.3` (development series toward GTK 4.24)                |
 | Build host     | Ubuntu (`ubuntu-26.04` runner)                              |
 | Arch           | `x86_64` (shared libraries)                                 |
 | Build system   | Meson + Ninja + pkg-config                                  |

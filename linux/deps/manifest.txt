@@ -28,15 +28,15 @@
 # checksums verified at pin time. Bump deliberately and re-verify the sha256.
 
 # --- GTK build deps too new for the distro ----------------------------------
-# GTK 4.23.2 requires wayland-protocols >= 1.48, but even ubuntu-26.04 only
+# GTK 4.23.x requires wayland-protocols >= 1.48, but even ubuntu-26.04 only
 # ships 1.47. wayland-protocols is a tiny, XML-only meson package (no compiled
 # code), so we build a new-enough release into our prefix; it installs
 # wayland-protocols.pc into share/pkgconfig, which our prefix puts ahead of the
 # system copy so GTK picks it up.
-wayland-protocols 1.48 c563af8e2e784f9599fe23819a3fc5e7d946e76db9f90a2e3ba6c9a869a52911  https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.48/wayland-protocols-1.48.tar.gz
+wayland-protocols 1.49 ec4c8f74942d6dff7ace8b4ce4764f0ef9ff618a935d974ea77edee2ad240b14  https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.49/downloads/wayland-protocols-1.49.tar.xz
 
 # --- GTK (development release, not packaged by Ubuntu) ----------------------
 # 4.23.x is the unstable development series leading to GTK 4.24. Ubuntu ships
 # only stable GTK, so we build this dev release from the GNOME source tarball
 # to test the latest Nordstjernen against it.
-gtk         4.23.2    36de8f85b30a9967cf9555a0717ed65046a196b9b3cda02dcf84c116a01ee602  https://download.gnome.org/sources/gtk/4.23/gtk-4.23.2.tar.xz
+gtk         4.23.3    AUTO  https://download.gnome.org/sources/gtk/4.23/gtk-4.23.3.tar.xz

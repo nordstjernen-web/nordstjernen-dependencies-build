@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Ensure manifest is fully pinned (main only)
         if: github.ref == 'refs/heads/main'
@@ -55,9 +55,9 @@ jobs:
           echo "ok: all manifest entries are pinned"
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Install build tools and GTK build dependencies
         run: |
@@ -88,7 +88,7 @@ jobs:
           echo "gcc $(gcc -dumpfullversion 2>/dev/null || gcc -dumpversion)"
 
       - name: Cache source tarballs
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: linux/.cache/tarballs
           key: linux-deps-tarballs-${{ hashFiles('linux/deps/manifest.txt') }}
@@ -96,7 +96,7 @@ jobs:
             linux-deps-tarballs-
 
       - name: Cache ccache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: linux/.cache/ccache
           key: linux-deps-ccache-${{ matrix.arch }}-${{ hashFiles('linux/deps/manifest.txt') }}-${{ github.sha }}
@@ -194,7 +194,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download all overlay artifacts
         uses: actions/download-artifact@v8
@@ -226,7 +226,7 @@ jobs:
           echo "== release assets =="; ls -lh dist
 
       - name: Publish rolling 'linux-gtk-latest' release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: linux-gtk-latest
           name: Linux GTK overlay (latest)

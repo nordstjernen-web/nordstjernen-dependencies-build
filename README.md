@@ -36,33 +36,33 @@ platform's manifest
 | Group | Library | Version | Purpose |
 |-------|---------|---------|---------|
 | Base | zlib | 1.3.2 | deflate/gzip |
-| Base | libffi | 3.5.2 | GObject closures |
-| Base | pcre2 | 10.47 | GLib regex |
-| Base | expat | 2.8.1 | XML (fontconfig) |
-| GLib | glib | 2.88.1 | glib/gobject/gio/gmodule |
+| Base | libffi | 3.8.0 | GObject closures |
+| Base | pcre2 | 10.48 | GLib regex |
+| Base | expat | 2.8.4 | XML (fontconfig) |
+| GLib | glib | 2.90.0 | glib/gobject/gio/gmodule |
 | GLib | proxy-libintl | 0.5 | libintl shim (no bionic/Darwin gettext) |
 | Text/font | freetype | 2.14.3 | font rasterizer (two-stage with harfbuzz) |
 | Text/font | libpng | 1.6.58 | PNG (freetype/cairo) |
-| Text/font | harfbuzz | 14.2.1 | text shaping |
-| Text/font | fontconfig | 2.18.1 | font discovery |
+| Text/font | harfbuzz | 14.4.0 | text shaping |
+| Text/font | fontconfig | 2.18.3 | font discovery |
 | Text/font | pixman | 0.46.4 | cairo pixel ops |
 | Text/font | fribidi | 1.0.16 | bidi (pango) |
 | Graphics | cairo | 1.18.4 | 2D rendering |
-| Graphics | pango | 1.57.1 | text layout |
-| Network | openssl | 3.6.3 | TLS (curl) |
-| Network | nghttp2 | 1.69.0 | HTTP/2 (curl) |
+| Graphics | pango | 1.58.2 | text layout |
+| Network | openssl | 3.6.4 | TLS (curl) |
+| Network | nghttp2 | 1.70.0 | HTTP/2 (curl) |
 | Network | brotli | 1.2.0 | `Content-Encoding: br` (curl) |
-| Network | curl | 8.20.0 | HTTP(S) |
-| Misc | sqlite3 | 3.53.2 | storage |
+| Network | curl | 8.22.0 | HTTP(S) |
+| Misc | sqlite3 | 3.53.4 | storage |
 | Misc | uchardet | 0.0.8 | charset detection |
-| Misc | libpsl | 0.21.5 | public-suffix / cookie policy |
+| Misc | libpsl | 0.23.3 | public-suffix / cookie policy |
 | Misc | libwebp | 1.6.0 | WebP decode |
 | Media | libogg | 1.3.6 | Ogg container framing |
 | Media | libvorbis | 1.3.7 | Vorbis audio decode |
 | Media | opus | 1.6.1 | Opus audio decode |
-| Media | dav1d | 1.5.3 | AV1 video decode (Firefox's decoder) |
-| Media | libvpx | 1.16.0 | VP8/VP9 video decode (Android only for now; static) |
-| Android only | llama | b9632 | on-device LLM (libllama + ggml) |
+| Media | dav1d | 1.5.4 | AV1 video decode (Firefox's decoder) |
+| Media | libvpx | 1.17.0 | VP8/VP9 video decode (Android only for now; static) |
+| Android only | llama | b11058 | on-device LLM (libllama + ggml) |
 
 `llama.cpp` is built for **Android only** — mobile iOS does not ship the
 on-device AI feature. lexbor, QuickJS, WAMR and Wuffs are **not** listed here:
@@ -184,7 +184,7 @@ Then put the overlay ahead of the system GTK (`PKG_CONFIG_PATH` +
 `LD_LIBRARY_PATH`, see [`linux/README.md`](linux/README.md)) and build/run the
 desktop engine as usual.
 
-- **Targets:** a development **GTK 4** (`4.23.2`, the series toward GTK 4.24)
+- **Targets:** a development **GTK 4** (`4.23.3`, the series toward GTK 4.24)
   built on Ubuntu against the system graphics stack; `x86_64`, shared libraries.
   Only GTK is built — every other dependency comes from the distro — so consume
   it on the same Ubuntu release it was built on.
