@@ -20,7 +20,8 @@
 #
 # Unlike the android/ios sysroots, this does NOT rebuild the GLib/cairo/pango
 # stack: GTK is compiled against the system libraries. Only pieces Ubuntu does
-# not package (a development release of GTK) are built from source.
+# not package (a development release of GTK, plus a wayland-protocols newer than
+# the distro's) are built from source.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

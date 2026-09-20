@@ -65,9 +65,8 @@ libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e3
 # upstream revisions; we pin the latest upstream *stable release* (>= Firefox's
 # revision in every case, so we carry its security fixes). Codecs are the browser
 # attack surface most exposed to hostile input, hence exact version + sha256
-# pins. libvpx (VP8/VP9) is deliberately not here yet: its bespoke,
-# ffmpeg-style configure needs a custom cross wrapper (see README) and its own
-# CI-verified change.
+# pins. libvpx (VP8/VP9) is built too, by a bespoke recipe for its ffmpeg-style
+# configure (see its entry below).
 #   ogg     -> container framing        (dav1d/opus/vorbis are the codecs)
 #   vorbis  -> Vorbis audio  (needs ogg; find_package(Ogg) resolves in-prefix)
 #   opus    -> Opus audio    (WebM/Ogg; OPUS_HARDENING stays on by default)

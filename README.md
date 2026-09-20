@@ -12,8 +12,7 @@ local developers) can consume them instead of compiling from scratch.
 - **Android:** `android/` → `sysroot-latest` release, consumed by nordstjernen's
   `android/scripts/build-deps.sh`.
 - **iOS:** `ios/` → `ios-sysroot-latest` release, consumed by nordstjernen's
-  `ios/scripts/build-engine.sh`. **Newly authored — not yet verified by a green
-  CI run** (see [`ios/README.md`](ios/README.md)).
+  `ios/scripts/build-engine.sh` (see [`ios/README.md`](ios/README.md)).
 - **Linux:** `linux/` → `linux-gtk-latest` release, a bleeding-edge dev GTK 4
   overlay for testing the desktop engine on Ubuntu (see
   [`linux/README.md`](linux/README.md)).

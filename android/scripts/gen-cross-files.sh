@@ -5,7 +5,7 @@
 # Usage:
 #   gen-cross-files.sh [abi ...]
 #
-# With no arguments all four ABIs are generated; otherwise only the named ones.
+# With no arguments all ABIs are generated; otherwise only the named ones.
 # The per-ABI install prefix (<base>/<abi>) is taken from
 # $NORDSTJERNEN_ANDROID_SYSROOT and baked into each cross-file's
 # pkg_config_libdir so Meson resolves the already-built dependencies.
