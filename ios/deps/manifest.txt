@@ -45,7 +45,7 @@ cairo       1.18.4    445ed8208a6e4823de1226a74ca319d3600e83f6369f99b14265006599
 pango       1.58.2    342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a  https://download.gnome.org/sources/pango/1.58/pango-1.58.2.tar.xz
 
 # --- Network ----------------------------------------------------------------
-openssl     3.6.4     9bffaa1ad1e07b354c21bd3324ec02fa15579f45a7d0494b3e74bc449b7333ef  https://github.com/openssl/openssl/releases/download/openssl-3.6.4/openssl-3.6.4.tar.gz
+openssl     4.0.2     736b467530f916737b7031310ccb21d8218c6229e61e8e160cd1d3458cd543a8  https://github.com/openssl/openssl/releases/download/openssl-4.0.2/openssl-4.0.2.tar.gz
 nghttp2     1.70.0    aa317e2cf9dca6afa0aed68f8fad6ff303ec6982e25a78c75c0b65e2b9b3ded5  https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.gz
 # brotli powers HTTP `Content-Encoding: br`, which the vast majority of sites now
 # serve; building it lets libcurl (and thus the browser) decode brotli natively.

@@ -48,7 +48,7 @@ platform's manifest
 | Text/font | fribidi | 1.0.16 | bidi (pango) |
 | Graphics | cairo | 1.18.4 | 2D rendering |
 | Graphics | pango | 1.58.2 | text layout |
-| Network | openssl | 3.6.4 | TLS (curl) |
+| Network | openssl | 4.0.2 | TLS (curl) |
 | Network | nghttp2 | 1.70.0 | HTTP/2 (curl) |
 | Network | brotli | 1.2.0 | `Content-Encoding: br` (curl) |
 | Network | curl | 8.22.0 | HTTP(S) |
