@@ -127,9 +127,11 @@ download_verify() {
     log "Downloading ${name} ${DEP_VERSION[$name]} from ${url}"
     # A real User-Agent avoids 4xx from picky upstreams. --retry-all-errors
     # retries non-transient HTTP codes too (some GNOME mirrors intermittently
-    # 429/503 under load). Fail loudly so a download error is not later
+    # 429/503 under load, freedesktop.org 418s when rate-limiting). Omit
+    # --retry-delay so curl backs off exponentially and cap the total with
+    # --retry-max-time. Fail loudly so a download error is not later
     # misreported as a checksum mismatch.
-    if ! curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+    if ! curl -fsSL --retry 8 --retry-max-time 180 --retry-all-errors \
               -A "${UA}" -o "${file}.tmp" "${url}"; then
       rm -f "${file}.tmp"
       die "download failed for ${name} from ${url}"

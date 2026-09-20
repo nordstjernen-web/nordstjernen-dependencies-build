@@ -187,10 +187,12 @@ download_verify() {
     log "Downloading ${name} ${DEP_VERSION[$name]} from ${url}"
     # A real User-Agent avoids 4xx from picky upstreams (some reject curl's
     # default UA). --retry-all-errors retries non-transient HTTP codes too
-    # (e.g. freedesktop.org intermittently 418s under parallel load), which
-    # curl's plain --retry would otherwise not retry. Fail loudly here so a
-    # download error is not later misreported as a checksum mismatch.
-    if ! curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+    # (e.g. freedesktop.org 418s when it rate-limits the parallel ABI jobs),
+    # which curl's plain --retry would otherwise not retry. Omit --retry-delay
+    # so curl backs off exponentially (a fixed 3 s delay burned all retries in
+    # 15 s against a rate limit) and cap the total with --retry-max-time. Fail
+    # loudly so a download error is not misreported as a checksum mismatch.
+    if ! curl -fsSL --retry 8 --retry-max-time 180 --retry-all-errors \
               -A "nordstjernen-android-deps/1.0 (+https://github.com/nordstjernen-web/nordstjernen-dependencies-build)" \
               -o "${file}.tmp" "${url}"; then
       rm -f "${file}.tmp"
