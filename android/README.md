@@ -49,8 +49,6 @@ order:
   libvpx is built decode-only as a **static** `libvpx.a` (its ffmpeg-style
   `configure` is static-oriented on Android); the engine links it into its own
   shared objects. H.264/HEVC/AAC come from Android `MediaCodec`, not from here.
-- **On-device inference:** llama.cpp (libllama + ggml), built with
-  `GGML_NATIVE=OFF`/`GGML_OPENMP=OFF` for a clean NDK cross-compile
 
 > `lexbor`, `quickjs-ng`, `WAMR` and `Wuffs` are **not** built here — they are
 > vendored in the engine tree and compiled together with the engine.

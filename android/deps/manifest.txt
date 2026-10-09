@@ -81,8 +81,3 @@ dav1d       1.5.4     2abfb0c89212e6e4733a54e0ae509ec00a5b845a6360946f918806e14a
 # auto-generates the archive tarball from the tag (same form as libpng/brotli);
 # the sha256 is of that archive.
 libvpx      1.17.0    1020f184046187baa2985dbde38e0691f49c44088bca7a1842b0236c6081dc0a  https://github.com/webmproject/libvpx/archive/refs/tags/v1.17.0.tar.gz
-
-# --- On-device inference ----------------------------------------------------
-# llama.cpp (libllama + ggml) for the engine's on-device LLM features. Pinned to
-# an upstream release-build tag (bNNNN); bump deliberately and re-verify sha256.
-llama       b11058    29890351973355957fd534bbb102750ad69acd7378f4534b470b8fecbae22356  https://github.com/ggml-org/llama.cpp/archive/refs/tags/b11058.tar.gz

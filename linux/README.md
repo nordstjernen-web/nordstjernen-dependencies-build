@@ -37,8 +37,8 @@ The pinned version and verified checksum live in
   Docs, man pages, demos, the test suite, GObject introspection and the
   GStreamer media backend are disabled to keep the overlay small.
 
-> `lexbor`, `quickjs-ng`, `WAMR` and `Wuffs` are vendored in the engine tree;
-> `llama.cpp` is an Android-only feature. None of them are built here.
+> `lexbor`, `quickjs-ng`, `WAMR` and `Wuffs` are vendored in the engine tree,
+> so none of them are built here.
 
 ## Consuming the prebuilt overlay (the fast path)
 

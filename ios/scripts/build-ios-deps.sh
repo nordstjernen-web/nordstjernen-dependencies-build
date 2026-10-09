@@ -321,7 +321,6 @@ dep_curl() {
 
 # Ordered build plan. freetype is built twice to resolve the harfbuzz cycle.
 # brotli precedes curl so libcurl can link it for `Content-Encoding: br`.
-# No llama.cpp here: on-device inference is not part of the mobile iOS build.
 BUILD_PLAN=(
   zlib libffi pcre2 expat
   glib

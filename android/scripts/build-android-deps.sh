@@ -309,21 +309,6 @@ dep_curl() {
     -DHTTP_ONLY=OFF
 }
 
-dep_llama() {
-  local s; s="$(fetch_source llama)"
-  # Cross-compile libllama + ggml only (no tools/examples/server/tests/app). Pin
-  # the cross-unfriendly bits: GGML_NATIVE=OFF (never probe the build host's CPU)
-  # and GGML_OPENMP=OFF (bionic ships no libgomp). LLAMA_BUILD_COMMON=OFF drops
-  # the curl/build-info helper library the engine does not consume.
-  # LLAMA_BUILD_APP=OFF skips the unified `app/` binary, which #includes the
-  # build-info.h header that only the (disabled) common library generates.
-  build_cmake "${s}" \
-    -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
-    -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_COMMON=OFF \
-    -DLLAMA_BUILD_APP=OFF \
-    -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_BUILD_TESTS=OFF
-}
-
 # Ordered build plan. freetype is built twice to resolve the harfbuzz cycle.
 # brotli precedes curl so libcurl can link it for `Content-Encoding: br`.
 BUILD_PLAN=(
@@ -336,7 +321,6 @@ BUILD_PLAN=(
   sqlite3 uchardet libpsl libwebp
   libogg libvorbis opus dav1d libvpx
   curl
-  llama
 )
 
 log "==> Building Android dependency sysroot for ${CURRENT_ABI}"

@@ -61,12 +61,10 @@ platform's manifest
 | Media | opus | 1.6.1 | Opus audio decode |
 | Media | dav1d | 1.5.4 | AV1 video decode (Firefox's decoder) |
 | Media | libvpx | 1.17.0 | VP8/VP9 video decode (Android only for now; static) |
-| Android only | llama | b11058 | on-device LLM (libllama + ggml) |
 
-`llama.cpp` is built for **Android only** — mobile iOS does not ship the
-on-device AI feature. lexbor, QuickJS, WAMR and Wuffs are **not** listed here:
-they are vendored in the engine tree and compiled together with the engine, not
-as sysroot libraries.
+lexbor, QuickJS, WAMR and Wuffs are **not** listed here: they are vendored in
+the engine tree and compiled together with the engine, not as sysroot
+libraries.
 
 ### Media codecs (`<video>` / `<audio>`)
 

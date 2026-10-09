@@ -59,10 +59,6 @@ order:
 
 > `lexbor`, `quickjs-ng`, `WAMR` and `Wuffs` are **not** built here — they are
 > vendored in the engine tree and compiled together with the engine.
->
-> `llama.cpp` is **not** built for iOS: on-device inference is not part of the
-> mobile iOS engine, so it is omitted from the manifest and build plan (it *is*
-> built for Android).
 
 ### Apple libc notes
 

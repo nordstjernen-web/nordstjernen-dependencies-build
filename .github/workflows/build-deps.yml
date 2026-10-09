@@ -135,12 +135,6 @@ jobs:
             pkg-config --exists "$m" && echo "ok   $m $(pkg-config --modversion "$m")" \
                                      || { echo "MISSING $m"; exit 1; }
           done
-          # llama.cpp / ggml ship CMake config rather than pkg-config, so check
-          # for the shared libraries directly.
-          for so in libllama.so libggml.so libggml-base.so; do
-            test -f "${PREFIX}/lib/${so}" && echo "ok   ${so}" \
-                                          || { echo "MISSING ${so}"; exit 1; }
-          done
           # Confirm libcurl actually linked brotli (decodes `Content-Encoding: br`).
           if command -v readelf >/dev/null; then
             if readelf -dW "${PREFIX}/lib/libcurl.so" | grep -q 'libbrotlidec'; then
