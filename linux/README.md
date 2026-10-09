@@ -1,7 +1,7 @@
 # Nordstjernen Linux GTK overlay
 
 This directory builds and publishes a bleeding-edge **development GTK 4** for
-Ubuntu so the desktop [Nordstjernen](https://github.com/nordstjernen-web/nordstjernen)
+Ubuntu so the desktop [Nordstjernen](https://github.com/nordstjernen-web/nordstjernen-browser)
 engine can be tested against the latest dev GTK without waiting for the distro
 to package it.
 

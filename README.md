@@ -1,6 +1,6 @@
 # nordstjernen-dependencies-build
 
-Mobile build support for the [Nordstjernen](https://github.com/nordstjernen-web/nordstjernen)
+Mobile build support for the [Nordstjernen](https://github.com/nordstjernen-web/nordstjernen-browser)
 web browser engine.
 
 This repository hosts the CI/CD that builds Nordstjernen's native third-party

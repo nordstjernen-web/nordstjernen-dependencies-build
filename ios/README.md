@@ -3,7 +3,7 @@
 This directory builds and publishes a **prebuilt native dependency sysroot** for
 the Nordstjernen browser engine's iOS port. The engine's own build script
 (`ios/scripts/build-deps.sh`, in the
-[`nordstjernen-web/nordstjernen`](https://github.com/nordstjernen-web/nordstjernen)
+[`nordstjernen-web/nordstjernen-browser`](https://github.com/nordstjernen-web/nordstjernen-browser)
 repo) expects a ready-made sysroot at:
 
 ```
