@@ -36,19 +36,19 @@ platform's manifest
 |-------|---------|---------|---------|
 | Base | zlib | 1.3.2 | deflate/gzip |
 | Base | libffi | 3.8.0 | GObject closures |
-| Base | pcre2 | 10.48 | GLib regex |
-| Base | expat | 2.8.4 | XML (fontconfig) |
+| Base | pcre2 | 10.49 | GLib regex |
+| Base | expat | 2.9.0 | XML (fontconfig) |
 | GLib | glib | 2.90.0 | glib/gobject/gio/gmodule |
 | GLib | proxy-libintl | 0.5 | libintl shim (no bionic/Darwin gettext) |
 | Text/font | freetype | 2.14.3 | font rasterizer (two-stage with harfbuzz) |
-| Text/font | libpng | 1.6.58 | PNG (freetype/cairo) |
+| Text/font | libpng | 1.6.59 | PNG (freetype/cairo) |
 | Text/font | harfbuzz | 14.4.0 | text shaping |
 | Text/font | fontconfig | 2.18.3 | font discovery |
 | Text/font | pixman | 0.46.4 | cairo pixel ops |
 | Text/font | fribidi | 1.0.16 | bidi (pango) |
 | Graphics | cairo | 1.18.4 | 2D rendering |
 | Graphics | pango | 1.58.2 | text layout |
-| Network | openssl | 4.0.2 | TLS (curl) |
+| Network | openssl | 4.0.3 | TLS (curl) |
 | Network | nghttp2 | 1.70.0 | HTTP/2 (curl) |
 | Network | brotli | 1.2.0 | `Content-Encoding: br` (curl) |
 | Network | curl | 8.22.0 | HTTP(S) |
