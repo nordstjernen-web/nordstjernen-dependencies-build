@@ -41,21 +41,26 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Upstream configure/meson/cmake scripts from the tarballs run on this
+          # runner; nothing here pushes with git, so never leave the token in .git.
+          persist-credentials: false
 
-      - name: Ensure manifest is fully pinned (main only)
-        if: github.ref == 'refs/heads/main'
+      - name: Ensure manifest is fully pinned
+        # Runs on EVERY branch: an AUTO entry means the tarball is not verified, and
+        # nothing unverified may be built by CI, let alone published.
         run: |
           set -euo pipefail
           if awk '!/^[[:space:]]*#/ && NF>=4 {print $3}' linux/deps/manifest.txt \
                | grep -qiw 'AUTO'; then
-            echo "::error::manifest still has AUTO (unpinned) checksums; pin them before merging to main"
+            echo "::error::manifest still has AUTO (unpinned) checksums; pin them (see the manifest header for the procedure)"
             exit 1
           fi
           echo "ok: all manifest entries are pinned"
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
 
@@ -82,13 +87,13 @@ jobs:
             build-essential ninja-build pkg-config cmake ccache \
             gettext ca-certificates
           # Recent Meson/Ninja from PyPI (Ubuntu's can lag GTK's requirement).
-          python -m pip install --upgrade pip
-          python -m pip install 'meson>=1.5.0' ninja
+          # Exact versions + sha256 (pip --require-hashes): see the requirements file.
+          python -m pip install --require-hashes -r .github/requirements-build.txt
           echo "meson $(meson --version), ninja $(ninja --version), cmake $(cmake --version | head -1)"
           echo "gcc $(gcc -dumpfullversion 2>/dev/null || gcc -dumpversion)"
 
       - name: Cache source tarballs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: linux/.cache/tarballs
           key: linux-deps-tarballs-${{ hashFiles('linux/deps/manifest.txt') }}
@@ -96,7 +101,7 @@ jobs:
             linux-deps-tarballs-
 
       - name: Cache ccache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: linux/.cache/ccache
           key: linux-deps-ccache-${{ matrix.arch }}-${{ hashFiles('linux/deps/manifest.txt') }}-${{ github.sha }}
@@ -114,7 +119,7 @@ jobs:
 
       - name: Upload build logs (${{ matrix.arch }})
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nordstjernen-linux-build-logs-${{ matrix.arch }}
           path: |
@@ -167,10 +172,14 @@ jobs:
             echo "gtk=$(awk '$1=="gtk"{print $2}' linux/deps/manifest.txt)"
             echo "commit=${{ github.sha }}"
             echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "meson=$(meson --version)"
+            echo "ninja=$(ninja --version)"
+            echo "cmake=$(cmake --version | head -1 | awk '{print $3}')"
+            echo "gcc=$(gcc -dumpfullversion 2>/dev/null || gcc -dumpversion)"
           } > "${OUT}/${{ matrix.arch }}/BUILDINFO.txt"
 
       - name: Upload GTK overlay artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nordstjernen-linux-gtk-${{ matrix.arch }}
           # Upload the parent dir so the artifact keeps a top-level <arch>/
@@ -186,18 +195,27 @@ jobs:
     name: publish-release
     needs: build
     runs-on: ubuntu-latest
+    # Publish ONLY from main: a workflow_dispatch from a feature branch must never
+    # overwrite the public release that every engine build consumes. The nightly
+    # schedule builds (to catch toolchain drift) but does not publish, so the
+    # released assets change only when a commit on main changes them.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     permissions:
       contents: write
+      id-token: write      # OIDC identity for the build-provenance attestation
+      attestations: write  # store the attestation on this repository
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Upstream configure/meson/cmake scripts from the tarballs run on this
+          # runner; nothing here pushes with git, so never leave the token in .git.
+          persist-credentials: false
 
       - name: Download all overlay artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: nordstjernen-linux-gtk-*
           path: artifacts
@@ -225,8 +243,44 @@ jobs:
           ( cd dist && sha256sum ./*.tar.gz manifest.txt > SHA256SUMS )
           echo "== release assets =="; ls -lh dist
 
+      - name: Attest build provenance of the release assets
+        # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
+        # Consumers verify with: gh attestation verify <asset> --repo <this repo>
+        # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: |
+            dist/nordstjernen-linux-gtk-*.tar.gz
+            dist/SHA256SUMS
+
+      - name: Compute immutable release tag
+        id: reltag
+        run: echo "tag=linux-gtk-$(date -u +%Y%m%d)-${GITHUB_SHA::9}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish immutable per-commit release ${{ steps.reltag.outputs.tag }}
+        # The rolling '-latest' release below is overwritten in place, so it can
+        # never be pinned. This copy is tied to the source commit and is never
+        # updated; consumers who want reproducible builds pin this tag.
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ steps.reltag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Linux GTK overlay ${{ steps.reltag.outputs.tag }}
+          make_latest: false
+          body: |
+            Immutable build of commit `${{ github.sha }}`. Same assets as the
+            rolling `linux-gtk-latest` release at the time of publishing;
+            see `manifest.txt` for the pinned versions and `SHA256SUMS` for checksums.
+            Each asset carries a build-provenance attestation
+            (`gh attestation verify <asset> --repo ${{ github.repository }}`).
+          files: |
+            dist/nordstjernen-linux-gtk-*.tar.gz
+            dist/SHA256SUMS
+            dist/manifest.txt
+          fail_on_unmatched_files: true
+
       - name: Publish rolling 'linux-gtk-latest' release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: linux-gtk-latest
           name: Linux GTK overlay (latest)

@@ -75,9 +75,12 @@ dep_libffi() {
 
 dep_pcre2() {
   local s; s="$(fetch_source pcre2)"
+  # JIT is OFF, matching iOS: it is only reached through GLib's GRegex (the JS
+  # engine has its own regex), and a JIT is executable-code generation we do
+  # not need in a browser process. The interpreted matcher is plenty for GLib.
   build_cmake "${s}" \
     -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON \
-    -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_SUPPORT_JIT=ON
+    -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF -DPCRE2_SUPPORT_JIT=OFF
 }
 
 dep_expat() {
@@ -97,8 +100,12 @@ dep_glib() {
   local intl; intl="$(fetch_source proxy-libintl)"
   rm -rf "${s}/subprojects/proxy-libintl-0.5"
   cp -a "${intl}" "${s}/subprojects/proxy-libintl-0.5"
+  # glib_checks / glib_assert are deliberately left at their defaults (on):
+  # g_return_if_fail() precondition checks are a cheap safety net in a library
+  # that handles web-derived strings and buffers; compiling them out turns a
+  # logged early return into memory corruption.
   build_meson "${s}" \
-    -Dtests=false -Dglib_assert=false -Dglib_checks=false \
+    -Dtests=false \
     -Dintrospection=disabled -Dnls=disabled -Dman-pages=disabled \
     -Ddtrace=disabled -Dsystemtap=disabled -Dlibmount=disabled \
     -Dselinux=disabled -Dxattr=false
@@ -122,10 +129,12 @@ dep_freetype_stage1() {
 
 dep_harfbuzz() {
   local s; s="$(fetch_source harfbuzz)"
+  # wasm=disabled pins the experimental WebAssembly shaper off (it carried
+  # CVE-2026-113679/113680); meson's default is off today, keep it explicit.
   build_meson "${s}" \
     -Dglib=enabled -Dfreetype=enabled -Dgobject=disabled \
     -Dcairo=disabled -Dicu=disabled -Dtests=disabled \
-    -Ddocs=disabled -Dutilities=disabled
+    -Ddocs=disabled -Dutilities=disabled -Dwasm=disabled
 }
 
 dep_freetype_stage2() {
@@ -175,7 +184,7 @@ dep_openssl() {
     PATH="${NDK_BIN}:${PATH}" \
     ./Configure "${ABI_OPENSSL_TARGET}" \
       --prefix="${PREFIX}" --libdir=lib \
-      shared no-tests no-apps "${PAGE_SIZE_LDFLAG}" "${UNDEF_VER_LDFLAG}"
+      shared no-tests no-apps "${PAGE_SIZE_LDFLAG}" "${UNDEF_VER_LDFLAG}" "${RELRO_LDFLAG}" "${NOW_LDFLAG}"
     PATH="${NDK_BIN}:${PATH}" make -j"${NPROC}"
     PATH="${NDK_BIN}:${PATH}" make install_sw install_ssldirs
   )
@@ -301,11 +310,23 @@ dep_libvpx() {
 
 dep_curl() {
   local s; s="$(fetch_source curl)"
+  # Compile in only the protocols the engine actually speaks: HTTP(S), FTP(S)
+  # (src/net.c renders FTP directory listings) and WebSocket. tftp, gopher,
+  # dict, telnet, file, smtp, pop3, imap, rtsp, mqtt, ldap and smb are each
+  # extra parser code exposed to hostile servers and an SSRF primitive if a
+  # page can steer a request at them, so they are disabled at build time; the
+  # engine's CURLOPT_PROTOCOLS_STR allow-list is the second layer. CI asserts
+  # the resulting `curl-config --protocols` list.
   build_cmake "${s}" \
     -DBUILD_CURL_EXE=OFF -DBUILD_TESTING=OFF \
     -DCURL_USE_OPENSSL=ON -DUSE_NGHTTP2=ON -DCURL_USE_LIBPSL=ON \
     -DCURL_USE_LIBSSH2=OFF -DCURL_USE_LIBSSH=OFF -DUSE_LIBIDN2=OFF \
     -DCURL_ZLIB=ON -DCURL_BROTLI=ON -DCURL_ZSTD=OFF -DENABLE_THREADED_RESOLVER=ON \
+    -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_TFTP=ON -DCURL_DISABLE_GOPHER=ON \
+    -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_SMTP=ON \
+    -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_RTSP=ON \
+    -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON \
+    -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_FTP=OFF \
     -DHTTP_ONLY=OFF
 }
 

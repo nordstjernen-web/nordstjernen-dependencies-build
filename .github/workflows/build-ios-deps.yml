@@ -39,10 +39,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Upstream configure/meson/cmake scripts from the tarballs run on this
+          # runner; nothing here pushes with git, so never leave the token in .git.
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
 
@@ -62,7 +66,7 @@ jobs:
           echo "simulator SDK: $(xcrun --sdk iphonesimulator --show-sdk-path)"
 
       - name: Cache source tarballs
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ios/.cache/tarballs
           key: ios-deps-tarballs-${{ hashFiles('ios/deps/manifest.txt') }}
@@ -70,7 +74,7 @@ jobs:
             ios-deps-tarballs-
 
       - name: Cache ccache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         # ccache only speeds up *reruns*; a clean build (the common case here)
         # leans on the parallel source prefetch in build-ios-deps.sh instead.
         with:
@@ -90,7 +94,7 @@ jobs:
 
       - name: Upload build logs (${{ matrix.platform }})
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nordstjernen-ios-build-logs-${{ matrix.platform }}
           path: |
@@ -136,6 +140,16 @@ jobs:
           done
           [ "${fail}" -eq 0 ] || { echo "::error::one or more archives are not arm64"; exit 1; }
           echo "ok   all $(ls -1 "${PREFIX}/lib/"*.a | wc -l | tr -d ' ') archives are arm64"
+          # libcurl must expose only the protocols the engine speaks. Every other
+          # protocol is disabled at configure time (see dep_curl); a curl bump that
+          # renames a CURL_DISABLE_* option would silently re-enable one.
+          protos="$("${PREFIX}/bin/curl-config" --protocols | tr '[:lower:]' '[:upper:]' | tr '\n' ' ')"
+          echo "libcurl protocols: ${protos}"
+          for p in ${protos}; do
+            case "${p}" in HTTP|HTTPS|FTP|FTPS|WS|WSS) : ;; *) echo "::error::libcurl built with unexpected protocol ${p}"; exit 1 ;; esac
+          done
+          case " ${protos} " in *" HTTPS "*) : ;; *) echo "::error::libcurl lacks HTTPS"; exit 1 ;; esac
+          echo "ok   libcurl protocol set is restricted to HTTP(S)/FTP(S)/WS(S)"
           # Confirm libcurl was built against brotli (decodes `Content-Encoding:
           # br`). curl's own libcurl.pc declares the brotli modules in its
           # private requires when enabled — that is the authoritative signal;
@@ -169,10 +183,14 @@ jobs:
             echo "xcode=$(xcodebuild -version | head -1)"
             echo "commit=${{ github.sha }}"
             echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "meson=$(meson --version)"
+            echo "ninja=$(ninja --version)"
+            echo "cmake=$(cmake --version | head -1 | awk '{print $3}')"
+            echo "clang=$(xcrun --sdk "${SDK}" clang --version | head -1)"
           } > "${OUT}/${{ matrix.platform }}/BUILDINFO.txt"
 
       - name: Upload sysroot artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nordstjernen-ios-sysroot-${{ matrix.platform }}
           # Upload the parent dir so the artifact keeps a top-level <platform>/
@@ -188,18 +206,27 @@ jobs:
     name: publish-release
     needs: build
     runs-on: ubuntu-latest
+    # Publish ONLY from main: a workflow_dispatch from a feature branch must never
+    # overwrite the public release that every engine build consumes. The nightly
+    # schedule builds (to catch toolchain drift) but does not publish, so the
+    # released assets change only when a commit on main changes them.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     permissions:
       contents: write
+      id-token: write      # OIDC identity for the build-provenance attestation
+      attestations: write  # store the attestation on this repository
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Upstream configure/meson/cmake scripts from the tarballs run on this
+          # runner; nothing here pushes with git, so never leave the token in .git.
+          persist-credentials: false
 
       - name: Download all sysroot artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: nordstjernen-ios-sysroot-*
           path: artifacts
@@ -219,8 +246,44 @@ jobs:
           ( cd dist && shasum -a 256 ./*.tar.gz manifest.txt > SHA256SUMS )
           echo "== release assets =="; ls -lh dist
 
+      - name: Attest build provenance of the release assets
+        # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
+        # Consumers verify with: gh attestation verify <asset> --repo <this repo>
+        # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: |
+            dist/nordstjernen-ios-sysroot-*.tar.gz
+            dist/SHA256SUMS
+
+      - name: Compute immutable release tag
+        id: reltag
+        run: echo "tag=ios-sysroot-$(date -u +%Y%m%d)-${GITHUB_SHA::9}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish immutable per-commit release ${{ steps.reltag.outputs.tag }}
+        # The rolling '-latest' release below is overwritten in place, so it can
+        # never be pinned. This copy is tied to the source commit and is never
+        # updated; consumers who want reproducible builds pin this tag.
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ steps.reltag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: iOS prebuilt sysroot ${{ steps.reltag.outputs.tag }}
+          make_latest: false
+          body: |
+            Immutable build of commit `${{ github.sha }}`. Same assets as the
+            rolling `ios-sysroot-latest` release at the time of publishing;
+            see `manifest.txt` for the pinned versions and `SHA256SUMS` for checksums.
+            Each asset carries a build-provenance attestation
+            (`gh attestation verify <asset> --repo ${{ github.repository }}`).
+          files: |
+            dist/nordstjernen-ios-sysroot-*.tar.gz
+            dist/SHA256SUMS
+            dist/manifest.txt
+          fail_on_unmatched_files: true
+
       - name: Publish rolling 'ios-sysroot-latest' release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ios-sysroot-latest
           name: iOS prebuilt sysroot (latest)

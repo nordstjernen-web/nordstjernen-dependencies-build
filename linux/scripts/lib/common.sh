@@ -111,8 +111,9 @@ sha256_of() { sha256sum "$1" | awk '{print $1}'; }
 #
 # If the manifest sha256 is the literal AUTO, the download is NOT verified;
 # instead the real checksum is printed as a `PINME <name> <sha>` line so it can
-# be copied back into the manifest. AUTO is a pin-time convenience only and is
-# rejected on main by the CI workflow.
+# be copied back into the manifest (after cross-checking it against upstream's
+# own checksum or signature). AUTO is a local convenience only and is rejected
+# by the CI workflow on every branch.
 download_verify() {
   local name="$1"
   local url="${DEP_URL[$name]:-}"; local sha="${DEP_SHA256[$name]:-}"
@@ -131,7 +132,11 @@ download_verify() {
     # --retry-delay so curl backs off exponentially and cap the total with
     # --retry-max-time. Fail loudly so a download error is not later
     # misreported as a checksum mismatch.
-    if ! curl -fsSL --retry 8 --retry-max-time 180 --retry-all-errors \
+    # --proto/--proto-redir pin the transfer to HTTPS even when a mirror
+    # (SourceForge, osuosl) redirects, so a plain-HTTP hop can never be
+    # inserted between us and the pinned hash.
+    if ! curl -fsSL --proto '=https' --proto-redir '=https' \
+              --retry 8 --retry-max-time 180 --retry-all-errors \
               -A "${UA}" -o "${file}.tmp" "${url}"; then
       rm -f "${file}.tmp"
       die "download failed for ${name} from ${url}"

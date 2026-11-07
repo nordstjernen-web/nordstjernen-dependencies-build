@@ -373,6 +373,36 @@ attacker-influenced data meanwhile.
 6. Add a scheduled OSV / CVE check of `manifest.txt` to CI so the next brotli
    is caught before a human reads an advisory.
 
+## Remediation status
+
+Applied on this branch after the review (see the commit history for details):
+
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | brotli 1.2.0 | **Fixed:** pinned 1.2.1. The GitHub auto-generated archive could not be downloaded from the review session, so its sha256 was taken from the Homebrew formula (`formulae.brew.sh/api/formula/brotli.json`); CI re-verifies the hash on the first build. |
+| 2 | curl 8.22.0 | **Fixed:** pinned 8.23.0 (hash computed from curl.se). |
+| 3 | libcurl protocol surface | **Fixed:** tftp, gopher, dict, telnet, file, smtp, pop3, imap, rtsp, mqtt, ldap(s) and smb are disabled at configure time; FTP(S) is kept because `src/net.c` in the engine renders FTP listings. CI asserts `curl-config --protocols`. |
+| 4 | expat 2.9.0 | **Fixed:** pinned 2.10.0 (hash from the GitHub release asset). |
+| 5 | freetype 2.14.3 | **Fixed:** pinned 2.15.0 (hash from download.savannah.gnu.org; the CVE fix commit is in tag VER-2-15-0). Feature release, so watch the first rendering runs. |
+| 6 | sqlite 3.53.4 | **Fixed:** pinned 3.54.1 (hash from sqlite.org). |
+| 7 | Publish from any branch; AUTO gate main-only | **Fixed:** publish jobs require `github.ref == refs/heads/main`; the Linux AUTO check runs on every branch; the nightly schedule builds but no longer republishes. |
+| 8 | Unsigned, overwritten releases | **Fixed:** every publish attests the assets with `actions/attest-build-provenance` and also creates an immutable per-commit release (`<prefix>-<date>-<sha>`); `fetch-prebuilt-deps.sh` verifies the attestation with `gh` when available (`NORDSTJERNEN_REQUIRE_ATTESTATION=1` makes it mandatory). |
+| 9 | Mutable action tags | **Fixed:** all `uses:` pinned to commit SHAs (version in a trailing comment). Enable Dependabot `github-actions` updates to keep them fresh. |
+| 10 | Trust-on-first-use pins | **Mitigated:** pin procedure documented in each manifest header and the Linux README; AUTO rejected by CI on every branch. Verification against upstream signatures remains a human step. |
+| 11 | GLib checks compiled out | **Fixed:** `glib_checks` / `glib_assert` left at their defaults. |
+| 12 | Unpinned build tooling | **Fixed for pip:** meson and ninja installed with `--require-hashes` from `.github/requirements-build.txt`. Homebrew (iOS) and apt (Linux) tooling is still unpinned; their versions are now recorded in `BUILDINFO.txt`. |
+| 13 | Redirects off HTTPS | **Fixed:** `--proto '=https' --proto-redir '=https'` on every download. |
+| 14 | Persisted checkout token | **Fixed:** `persist-credentials: false` on every checkout. |
+| 15 | zlib gzwrite CVEs | **Open:** no upstream release yet; bump when 1.3.2.1 ships. |
+| 16 | PCRE2 JIT on Android | **Fixed:** JIT off, matching iOS. |
+| 17 | harfbuzz wasm shaper | **Fixed:** `-Dwasm=disabled` explicit. |
+| 18 | Nightly overwrites | **Fixed:** see 7. |
+| 19 | Hardening flags not asserted | **Fixed for Android:** `-z relro -z now` passed explicitly and CI asserts GNU_RELRO, BIND_NOW and no TEXTREL on every shipped `.so`. iOS/Linux rely on toolchain defaults. |
+
+Engine side (nordstjernen-browser): the sysroot consumer scripts were updated
+to verify provenance and the libcurl protocol allow-list was made to follow the
+protocols the linked libcurl actually provides.
+
 ## Verification notes
 
 - OSV queries without an ecosystem return fuzzy, distro-level matches; every

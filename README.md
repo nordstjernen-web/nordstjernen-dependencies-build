@@ -37,10 +37,10 @@ platform's manifest
 | Base | zlib | 1.3.2 | deflate/gzip |
 | Base | libffi | 3.8.0 | GObject closures |
 | Base | pcre2 | 10.49 | GLib regex |
-| Base | expat | 2.9.0 | XML (fontconfig) |
+| Base | expat | 2.10.0 | XML (fontconfig) |
 | GLib | glib | 2.90.1 | glib/gobject/gio/gmodule |
 | GLib | proxy-libintl | 0.5 | libintl shim (no bionic/Darwin gettext) |
-| Text/font | freetype | 2.14.3 | font rasterizer (two-stage with harfbuzz) |
+| Text/font | freetype | 2.15.0 | font rasterizer (two-stage with harfbuzz) |
 | Text/font | libpng | 1.6.59 | PNG (freetype/cairo) |
 | Text/font | harfbuzz | 14.6.0 | text shaping |
 | Text/font | fontconfig | 2.18.3 | font discovery |
@@ -50,9 +50,9 @@ platform's manifest
 | Graphics | pango | 1.58.2 | text layout |
 | Network | openssl | 4.0.3 | TLS (curl) |
 | Network | nghttp2 | 1.70.0 | HTTP/2 (curl) |
-| Network | brotli | 1.2.0 | `Content-Encoding: br` (curl) |
-| Network | curl | 8.22.0 | HTTP(S) |
-| Misc | sqlite3 | 3.53.4 | storage |
+| Network | brotli | 1.2.1 | `Content-Encoding: br` (curl) |
+| Network | curl | 8.23.0 | HTTP(S), FTP(S), WebSocket only |
+| Misc | sqlite3 | 3.54.1 | storage |
 | Misc | uchardet | 0.0.8 | charset detection |
 | Misc | libpsl | 0.23.3 | public-suffix / cookie policy |
 | Misc | libwebp | 1.6.0 | WebP decode |
@@ -187,3 +187,23 @@ desktop engine as usual.
   it on the same Ubuntu release it was built on.
 - **CI:** [`.github/workflows/build-linux-deps.yml`](.github/workflows/build-linux-deps.yml)
   publishes `linux-gtk-latest` on every successful build of `main`.
+
+### Trust model of the published sysroots
+
+Every release asset is produced by the workflows in this repository from
+checksum-pinned upstream tarballs, on SHA-pinned GitHub Actions, and is
+published only from `main`. Each asset carries a GitHub **build-provenance
+attestation** (SLSA, signed by GitHub's OIDC identity for the workflow run) and
+is uploaded both to the rolling `*-latest` release and to an **immutable
+per-commit release** (`sysroot-<date>-<sha>`, `ios-sysroot-<date>-<sha>`,
+`linux-gtk-<date>-<sha>`). The `fetch-prebuilt-deps.sh` scripts verify the
+SHA-256 from `SHA256SUMS` and, when the `gh` CLI is present, the attestation:
+
+```bash
+gh attestation verify nordstjernen-android-sysroot-arm64-v8a.tar.gz \
+  --repo nordstjernen-web/nordstjernen-dependencies-build
+```
+
+Pin `--tag <immutable tag>` and set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` for a
+reproducible, verified consumer build. See [`SECURITY-REVIEW.md`](SECURITY-REVIEW.md)
+for the review that led to this setup.

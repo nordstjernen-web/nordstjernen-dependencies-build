@@ -14,14 +14,20 @@
 # Do NOT list lexbor, quickjs-ng, WAMR or Wuffs here: those are vendored in the
 # engine tree and compiled together with the engine, not as sysroot libraries.
 #
-# Versions below were pinned against upstream release tarballs and their
-# checksums verified at pin time. Bump deliberately and re-verify the sha256.
+# Pin procedure (do NOT copy a checksum from a CI log or a first download):
+#   1. download the tarball from the upstream URL below;
+#   2. verify it against upstream's own signature or checksum file (curl and
+#      OpenSSL publish .asc, GNOME a .sha256sum, SQLite lists sha3/sha256 on
+#      its download page, Savannah a .sig; for GitHub auto-generated archives
+#      cross-check the sha256 against a second packager such as Homebrew);
+#   3. paste the sha256 here and name the source of the cross-check in the
+#      commit message. Bump deliberately; CI re-verifies on every build.
 
 # --- Base -------------------------------------------------------------------
 zlib        1.3.2     bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16  https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz
 libffi      3.8.0     7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4  https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz
 pcre2       10.49     53c156e1ba416a20da8e65395daa132da0d80e76910424caca3fcdae7831d384  https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.49/pcre2-10.49.tar.bz2
-expat       2.9.0     1e6371862cc31999b368c3b89b49994f0677e1bab5f1b2b85ae3741f5d803051  https://github.com/libexpat/libexpat/releases/download/R_2_9_0/expat-2.9.0.tar.xz
+expat       2.10.0    c624ba2998fc65df1163a49641ff3f9ab73138b11641d92c86bee0fb01b1bc7f  https://github.com/libexpat/libexpat/releases/download/R_2_10_0/expat-2.10.0.tar.xz
 
 # --- GLib stack -------------------------------------------------------------
 glib        2.90.1    93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396  https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz
@@ -33,7 +39,7 @@ glib        2.90.1    93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc4
 proxy-libintl 0.5    f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda17857595303  https://github.com/frida/proxy-libintl/archive/refs/tags/0.5.tar.gz
 
 # --- Text / font ------------------------------------------------------------
-freetype    2.14.3    36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f  https://downloads.sourceforge.net/project/freetype/freetype2/2.14.3/freetype-2.14.3.tar.xz
+freetype    2.15.0    93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5  https://downloads.sourceforge.net/project/freetype/freetype2/2.15.0/freetype-2.15.0.tar.xz
 libpng      1.6.59    d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389  https://downloads.sourceforge.net/project/libpng/libpng16/1.6.59/libpng-1.6.59.tar.xz
 harfbuzz    14.6.0    d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586  https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz
 fontconfig  2.18.3    9ae01e1d53acdef56010c5451cd34aa41d325b2faccd8606448d8fa01b2496b3  https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.3/fontconfig-2.18.3.tar.gz
@@ -49,11 +55,11 @@ openssl     4.0.3     325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2f
 nghttp2     1.70.0    aa317e2cf9dca6afa0aed68f8fad6ff303ec6982e25a78c75c0b65e2b9b3ded5  https://github.com/nghttp2/nghttp2/releases/download/v1.70.0/nghttp2-1.70.0.tar.gz
 # brotli powers HTTP `Content-Encoding: br`, which the vast majority of sites now
 # serve; building it lets libcurl (and thus the browser) decode brotli natively.
-brotli      1.2.0     816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec  https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz
-curl        8.22.0    5d956a6a22b3c279f50c421ee5d3c9e9d660cb6f115dcf881b579e952130549c  https://curl.se/download/curl-8.22.0.tar.bz2
+brotli      1.2.1     98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f  https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz
+curl        8.23.0    95b22eb32bf6d1fa6e3e9463bdb61cece3efc56d86576a9b3cbd428246a6d854  https://curl.se/download/curl-8.23.0.tar.bz2
 
 # --- Misc -------------------------------------------------------------------
-sqlite3     3.53.4    0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c  https://www.sqlite.org/2026/sqlite-autoconf-3530400.tar.gz
+sqlite3     3.54.1    926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e  https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz
 uchardet    0.0.8     e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0  https://www.freedesktop.org/software/uchardet/releases/uchardet-0.0.8.tar.xz
 libpsl      0.23.3    93941f85a1e7bd593fa94f299233cb5dfc91cd144fd9a78a6ceb75001c5b03be  https://github.com/rockdaboot/libpsl/releases/download/0.23.3/libpsl-0.23.3.tar.gz
 libwebp     1.6.0     e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564  https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz

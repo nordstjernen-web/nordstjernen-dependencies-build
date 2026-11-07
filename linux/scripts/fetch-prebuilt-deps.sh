@@ -6,6 +6,8 @@
 # Release assets (under the rolling tag, default 'linux-gtk-latest'):
 #   nordstjernen-linux-gtk-<arch>.tar.gz   # each contains a top-level <arch>/
 #   SHA256SUMS                             # checksums for verification
+#   (each asset also carries a GitHub build-provenance attestation, verified
+#    with `gh attestation verify` when gh is installed -- see verify_attestation)
 #   manifest.txt                           # pinned versions that were built
 #
 # These are public, so no authentication (and no `gh` CLI) is required -- just
@@ -49,7 +51,27 @@ mkdir -p "${SYSROOT_BASE}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-dl() { curl -fsSL --retry 4 --retry-delay 2 -A "${UA}" -o "$2" "$1"; }
+dl() { curl -fsSL --proto '=https' --proto-redir '=https' --retry 4 --retry-delay 2 -A "${UA}" -o "$2" "$1"; }
+
+# Verify the GitHub build-provenance attestation of a downloaded asset when the
+# gh CLI is available. SHA256SUMS comes from the same release as the tarball,
+# so it only proves the download is intact; the attestation proves the asset
+# was produced by this repository's workflow from a specific commit. Set
+# NORDSTJERNEN_REQUIRE_ATTESTATION=1 to make a missing gh fatal; a failed
+# check is always fatal.
+verify_attestation() {
+  local file="$1"
+  if ! command -v gh >/dev/null 2>&1; then
+    if [ "${NORDSTJERNEN_REQUIRE_ATTESTATION:-0}" != "0" ]; then
+      die "gh CLI not found but NORDSTJERNEN_REQUIRE_ATTESTATION is set; install gh to verify ${file##*/}"
+    fi
+    warn "gh CLI not found; skipping provenance verification of ${file##*/} (set NORDSTJERNEN_REQUIRE_ATTESTATION=1 to require it)"
+    return 0
+  fi
+  gh attestation verify "${file}" --repo "${REPO}" >/dev/null 2>&1 \
+    || die "provenance attestation check FAILED for ${file##*/} (repo ${REPO}); refusing to install"
+  log "verified build provenance of ${file##*/}"
+}
 
 log "Downloading checksum manifest from ${TAG}"
 dl "${BASE_URL}/SHA256SUMS" "${tmp}/SHA256SUMS" \
@@ -66,6 +88,7 @@ for arch in "${ARCHS[@]}"; do
   [ -n "${want}" ] || die "no checksum for ${asset} in SHA256SUMS"
   echo "${want}  ${tmp}/${asset}" | sha256sum -c - >/dev/null \
     || die "checksum mismatch for ${asset}"
+  verify_attestation "${tmp}/${asset}"
 
   rm -rf "${SYSROOT_BASE:?}/${arch}"
   # Tarball carries a top-level <arch>/ dir, so extract straight into the base.

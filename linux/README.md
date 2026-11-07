@@ -115,13 +115,18 @@ The GTK version is pinned to an exact release in `deps/manifest.txt`, and the
 downloaded tarball's SHA-256 is verified before extraction. Bumping the version
 means editing the manifest and updating its checksum.
 
-Pinning a **new** version whose checksum you do not have yet: set the sha256
-field to the literal `AUTO`. CI then downloads the tarball, prints its real
-checksum as a `PINME gtk <sha256>` line (and a `::warning::`) and builds without
-verifying. Copy that checksum back into the manifest to pin it. `AUTO` is a
-pin-time convenience only — the `build-linux-deps` workflow **fails the build on
-`main`** if any manifest entry is still `AUTO`, so a real checksum must be in
-place before merging.
+Pinning a **new** version: download the tarball from the upstream URL, verify it
+against upstream's own checksum or signature (GNOME publishes a `.sha256sum`
+next to every tarball; freedesktop GitLab archives can be cross-checked against
+a second packager such as Homebrew), then paste the sha256 into the manifest and
+name the cross-check in the commit message. Do **not** copy a checksum from a CI
+log: that pins whatever the mirror happened to serve.
+
+The literal `AUTO` checksum still exists as a *local* convenience: the build
+script then downloads without verifying and prints the real checksum as a
+`PINME gtk <sha256>` line. CI rejects `AUTO` on **every** branch (the
+`build-linux-deps` workflow fails before building), so nothing unverified is ever
+built by CI, let alone published.
 
 ## CI triggers
 
@@ -132,4 +137,13 @@ The `build-linux-deps` workflow runs on:
 - a nightly `schedule` (05:17 UTC) to catch toolchain / runner drift.
 
 The build runs on an `ubuntu-26.04` runner; the release-publishing job runs on
-`ubuntu-latest` and only on `main` / manual / scheduled runs.
+`ubuntu-latest`. The release-publishing job runs only for commits on `main` (push or a manual
+`workflow_dispatch` *from* `main`); a dispatch from any other branch builds but
+never publishes, and the nightly schedule builds but does not republish, so the
+released assets change only when `main` changes. Every publish uploads the
+assets twice: to the rolling `-latest` release (overwritten in place) and to an
+immutable per-commit release (`<prefix>-<YYYYMMDD>-<sha>`, never updated) that
+consumers can pin. Each asset carries a GitHub build-provenance attestation;
+`fetch-prebuilt-deps.sh` verifies it with `gh attestation verify` when the `gh`
+CLI is installed (set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` to make that
+mandatory).
