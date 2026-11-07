@@ -51,7 +51,7 @@ platform's manifest
 | Network | openssl | 4.0.3 | TLS (curl) |
 | Network | nghttp2 | 1.70.0 | HTTP/2 (curl) |
 | Network | brotli | 1.2.1 | `Content-Encoding: br` (curl) |
-| Network | curl | 8.23.0 | HTTP(S), FTP(S), WebSocket only |
+| Network | curl | 8.23.0 | HTTP(S), FTP(S), WebSocket only (ftp kept for the engine's directory listings; tftp/gopher/dict/telnet/file/smtp/pop3/imap/rtsp/mqtt/ldap/smb/ipfs disabled at build time, asserted in CI) |
 | Misc | sqlite3 | 3.54.1 | storage |
 | Misc | uchardet | 0.0.8 | charset detection |
 | Misc | libpsl | 0.23.3 | public-suffix / cookie policy |
@@ -65,6 +65,19 @@ platform's manifest
 lexbor, QuickJS, WAMR and Wuffs are **not** listed here: they are vendored in
 the engine tree and compiled together with the engine, not as sysroot
 libraries.
+
+The **Linux GTK overlay** is a different, much smaller set: only what the
+development GTK needs and Ubuntu 26.04 does not ship new enough
+([`linux/deps/manifest.txt`](linux/deps/manifest.txt)). Everything else
+(cairo, gdk-pixbuf, graphene, libepoxy, harfbuzz, fontconfig, wayland, …)
+comes from the distro via `apt build-dep gtk4`.
+
+| Library | Version | Why it is in the overlay |
+|---------|---------|--------------------------|
+| wayland-protocols | 1.48 | GTK needs ≥ 1.48; Ubuntu 26.04 ships 1.47 (XML only, no code) |
+| glib | 2.90.1 | GTK 4.25 needs ≥ 2.89.3; Ubuntu ships 2.88 (ABI-backward-compatible, so the system stack keeps working) |
+| pango | 1.58.2 | GTK 4.25 needs ≥ 1.58; Ubuntu ships 1.57 |
+| gtk | 4.25.0 | the development series toward GTK 4.26 (4.24 is stable). 4.25.0 brings large performance work in GSK (path caching, frame diffing), the action framework, CSS selector parsing/matching and paragraph/text layout, plus `GtkGridView` sections and separate X/Y blur radii |
 
 ### Media codecs (`<video>` / `<audio>`)
 
@@ -140,7 +153,8 @@ overlay builds none of the above.
 
 ```bash
 # Download the prebuilt sysroot for all ABIs from the public GitHub Release
-# (no auth / no `gh` needed -- just curl + tar + sha256sum):
+# (just curl + tar + sha256sum; an authenticated `gh` additionally verifies
+# the build-provenance attestation):
 export NORDSTJERNEN_ANDROID_SYSROOT="$HOME/.cache/nordstjernen-android-sysroot"
 android/scripts/fetch-prebuilt-deps.sh --sysroot "$NORDSTJERNEN_ANDROID_SYSROOT"
 ```
@@ -199,7 +213,10 @@ best-effort, since a Sigstore outage must not block a security update) and
 is uploaded both to the rolling `*-latest` release and to an **immutable
 per-commit release** (`sysroot-<date>-<sha>`, `ios-sysroot-<date>-<sha>`,
 `linux-gtk-<date>-<sha>`). The `fetch-prebuilt-deps.sh` scripts verify the
-SHA-256 from `SHA256SUMS` and, when the `gh` CLI is present, the attestation:
+SHA-256 from `SHA256SUMS` and, when an authenticated `gh` CLI is present
+(`GH_TOKEN` on CI), the attestation. A missing `gh`, a missing login or a
+missing attestation (an asset published while Sigstore was down) only warns;
+an attestation that fails to verify is always fatal:
 
 ```bash
 gh attestation verify nordstjernen-android-sysroot-arm64-v8a.tar.gz \
@@ -209,3 +226,33 @@ gh attestation verify nordstjernen-android-sysroot-arm64-v8a.tar.gz \
 Pin `--tag <immutable tag>` and set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` for a
 reproducible, verified consumer build. See [`SECURITY-REVIEW.md`](SECURITY-REVIEW.md)
 for the review that led to this setup.
+
+## Maintaining the pins
+
+- **Bumping a dependency.** Download the tarball from the URL in the manifest,
+  verify it against upstream's own checksum or signature (curl and OpenSSL
+  publish `.asc`, GNOME a `.sha256sum` next to every tarball, SQLite lists the
+  hash on its download page, Savannah a `.sig`; for GitHub auto-generated
+  archives cross-check against a second packager such as Homebrew), paste the
+  sha256 into the manifest and name the cross-check in the commit message.
+  Never copy a checksum from a CI log or a first download. CI re-verifies
+  every tarball on every build and refuses the Linux manifest's `AUTO`
+  placeholder on every branch.
+- **Checking for vulnerabilities.** Query [OSV](https://osv.dev) for each
+  `<name> <version>` pair in the manifests (the `api.osv.dev/v1/query`
+  endpoint works without a key) and confirm hits against the MITRE CVE record
+  or the project's own advisory page; distro-level OSV matches are fuzzy.
+  libcurl, brotli, the image and media decoders and the font stack are the
+  libraries that face hostile input directly, so their advisories matter most.
+- **Build tooling.** meson and ninja come from PyPI pinned by version *and*
+  hash in [`.github/requirements-build.txt`](.github/requirements-build.txt);
+  GitHub Actions are pinned to commit SHAs. The tool versions used for each
+  build are recorded in the sysroot's `BUILDINFO.txt`.
+- **Publishing rules.** The release jobs run only for commits on `main`
+  (push, or a manual dispatch *from* `main`); a dispatch from any other branch
+  builds but never publishes, and the nightly schedule builds to catch toolchain
+  drift but does not republish, so the released assets change only when `main`
+  changes. Every publish writes the rolling `*-latest` release and an immutable
+  per-commit one. If Sigstore is down the assets are published unattested with
+  a loud workflow warning; re-run the publish job once
+  [status.sigstore.dev](https://status.sigstore.dev) is green to attach them.
