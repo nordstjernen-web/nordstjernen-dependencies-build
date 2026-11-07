@@ -11,9 +11,10 @@
 # - <sha256>  is verified against the downloaded tarball before extraction.
 #             The literal value AUTO means "not yet pinned": CI downloads the
 #             tarball, prints its real sha256 (a `PINME <name> <sha>` line) and
-#             proceeds WITHOUT verifying. AUTO must never reach main -- the
-#             build-linux-deps workflow fails the build on main if any entry is
-#             still AUTO. Replace AUTO with the printed checksum to pin it.
+#             proceeds WITHOUT verifying. AUTO is a LOCAL convenience only: the
+#             build-linux-deps workflow rejects it on every branch. Before
+#             pinning, verify the checksum against upstream's own .sha256sum /
+#             signature (or a second packager), never just the PINME line.
 # - lines beginning with '#' and blank lines are ignored
 #
 # Unlike the android/ and ios/ sysroots (which cross-compile the whole

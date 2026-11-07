@@ -47,8 +47,8 @@ pkg-config = 'pkg-config'
 # triple, so we don't redefine it here (avoids -Wmacro-redefined noise).
 c_args         = ['-fPIC', '-DANDROID']
 cpp_args       = ['-fPIC', '-DANDROID']
-c_link_args    = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}']
-cpp_link_args  = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}']
+c_link_args    = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}', '${RELRO_LDFLAG}', '${NOW_LDFLAG}']
+cpp_link_args  = ['${PAGE_SIZE_LDFLAG}', '${UNDEF_VER_LDFLAG}', '${RELRO_LDFLAG}', '${NOW_LDFLAG}']
 default_library = 'shared'
 
 [properties]

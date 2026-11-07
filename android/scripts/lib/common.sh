@@ -29,8 +29,13 @@ PAGE_SIZE_LDFLAG="-Wl,-z,max-page-size=16384"
 # a hard error (seen with pcre2 et al.). Re-allow undefined version-script
 # symbols -- the last of the two flags wins in lld.
 UNDEF_VER_LDFLAG="-Wl,--undefined-version"
+# Full RELRO + immediate binding. The NDK driver already defaults to these on
+# Android, but a dependency that overrides LDFLAGS could drop them; stating
+# them explicitly (and asserting them in CI with readelf) makes it a contract.
+RELRO_LDFLAG="-Wl,-z,relro"
+NOW_LDFLAG="-Wl,-z,now"
 # Flags applied to every link step (CMake / Meson / Autotools / OpenSSL).
-LINK_LDFLAGS="${PAGE_SIZE_LDFLAG} ${UNDEF_VER_LDFLAG}"
+LINK_LDFLAGS="${PAGE_SIZE_LDFLAG} ${UNDEF_VER_LDFLAG} ${RELRO_LDFLAG} ${NOW_LDFLAG}"
 
 # Repository layout (this file lives in android/scripts/lib/).
 COMMON_SH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -192,7 +197,11 @@ download_verify() {
     # so curl backs off exponentially (a fixed 3 s delay burned all retries in
     # 15 s against a rate limit) and cap the total with --retry-max-time. Fail
     # loudly so a download error is not misreported as a checksum mismatch.
-    if ! curl -fsSL --retry 8 --retry-max-time 180 --retry-all-errors \
+    # --proto/--proto-redir pin the transfer to HTTPS even when a mirror
+    # (SourceForge, osuosl) redirects, so a plain-HTTP hop can never be
+    # inserted between us and the pinned hash.
+    if ! curl -fsSL --proto '=https' --proto-redir '=https' \
+              --retry 8 --retry-max-time 180 --retry-all-errors \
               -A "nordstjernen-android-deps/1.0 (+https://github.com/nordstjernen-web/nordstjernen-dependencies-build)" \
               -o "${file}.tmp" "${url}"; then
       rm -f "${file}.tmp"
@@ -200,8 +209,10 @@ download_verify() {
     fi
     mv "${file}.tmp" "${file}"
   fi
-  echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1 \
-    || die "checksum mismatch for ${name} (${file}); delete it and re-run, or fix the manifest"
+  if ! echo "${sha}  ${file}" | sha256sum -c - >/dev/null 2>&1; then
+    local actual; actual="$(sha256sum "${file}" | awk '{print $1}')"
+    die "checksum mismatch for ${name} (${file}): expected ${sha}, got ${actual}; delete it and re-run, or fix the manifest"
+  fi
 }
 
 # Download every (or the named) dependency tarball up front, a few at a time.

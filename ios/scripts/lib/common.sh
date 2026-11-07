@@ -197,7 +197,11 @@ download_verify() {
     # backoff (better for rate-limiting) and cap the total with --retry-max-time.
     # Fail loudly so a download error is not later misreported as a checksum
     # mismatch.
-    if ! curl -fsSL --retry 8 --retry-max-time 180 --retry-all-errors \
+    # --proto/--proto-redir pin the transfer to HTTPS even when a mirror
+    # (SourceForge, osuosl) redirects, so a plain-HTTP hop can never be
+    # inserted between us and the pinned hash.
+    if ! curl -fsSL --proto '=https' --proto-redir '=https' \
+              --retry 8 --retry-max-time 180 --retry-all-errors \
               -A "nordstjernen-ios-deps/1.0 (+https://github.com/nordstjernen-web/nordstjernen-dependencies-build)" \
               -o "${file}.tmp" "${url}"; then
       rm -f "${file}.tmp"
@@ -205,8 +209,10 @@ download_verify() {
     fi
     mv "${file}.tmp" "${file}"
   fi
-  echo "${sha}  ${file}" | sha256bin -c - >/dev/null 2>&1 \
-    || die "checksum mismatch for ${name} (${file}); delete it and re-run, or fix the manifest"
+  if ! echo "${sha}  ${file}" | sha256bin -c - >/dev/null 2>&1; then
+    local actual; actual="$(sha256bin "${file}" | awk '{print $1}')"
+    die "checksum mismatch for ${name} (${file}): expected ${sha}, got ${actual}; delete it and re-run, or fix the manifest"
+  fi
 }
 
 # Download every (or the named) dependency tarball up front, a few at a time.

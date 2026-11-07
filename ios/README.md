@@ -19,8 +19,8 @@ binaries instead of compiling the world.
 ## Status
 
 The `build-ios-deps` workflow builds both platforms and publishes the
-`ios-sysroot-latest` release on every green run of `main` (nightly and on
-push). The tooling mirrors the Android tooling in [`../android`](../android),
+`ios-sysroot-latest` release (plus an immutable per-commit release) on every
+green push to `main`; the nightly run builds but does not republish. The tooling mirrors the Android tooling in [`../android`](../android),
 adapted to the Xcode/iOS toolchain. `libvpx` (VP8/VP9) is the one Android
 sysroot library not yet built for iOS (see the root README).
 
@@ -184,4 +184,13 @@ The `build-ios-deps` workflow runs on:
 - a nightly `schedule` (04:47 UTC) to catch toolchain / runner drift.
 
 The build matrix runs on `macos-15` (Apple Silicon) runners so the iOS SDK and
-`xcrun` are available; the release-publishing job runs on Linux.
+`xcrun` are available; the release-publishing job runs on Linux. The release-publishing job runs only for commits on `main` (push or a manual
+`workflow_dispatch` *from* `main`); a dispatch from any other branch builds but
+never publishes, and the nightly schedule builds but does not republish, so the
+released assets change only when `main` changes. Every publish uploads the
+assets twice: to the rolling `-latest` release (overwritten in place) and to an
+immutable per-commit release (`ios-sysroot-<YYYYMMDD>-<sha>`, never updated) that
+consumers can pin. Each asset carries a GitHub build-provenance attestation;
+`fetch-prebuilt-deps.sh` verifies it with `gh attestation verify` when the `gh`
+CLI is installed (set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` to make that
+mandatory).

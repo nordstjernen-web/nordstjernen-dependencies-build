@@ -177,3 +177,14 @@ The `build-deps` workflow runs on:
 - `push` touching `android/deps/**`, `android/scripts/**`, `android/cross/**`
   or the workflow file,
 - a nightly `schedule` (04:17 UTC) to catch toolchain / runner drift.
+
+The release-publishing job runs only for commits on `main` (push or a manual
+`workflow_dispatch` *from* `main`); a dispatch from any other branch builds but
+never publishes, and the nightly schedule builds but does not republish, so the
+released assets change only when `main` changes. Every publish uploads the
+assets twice: to the rolling `-latest` release (overwritten in place) and to an
+immutable per-commit release (`sysroot-<YYYYMMDD>-<sha>`, never updated) that
+consumers can pin. Each asset carries a GitHub build-provenance attestation;
+`fetch-prebuilt-deps.sh` verifies it with `gh attestation verify` when the `gh`
+CLI is installed (set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` to make that
+mandatory).

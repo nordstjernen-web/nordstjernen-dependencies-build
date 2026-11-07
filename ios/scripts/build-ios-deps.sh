@@ -101,8 +101,12 @@ dep_glib() {
   local intl; intl="$(fetch_source proxy-libintl)"
   rm -rf "${s}/subprojects/proxy-libintl-0.5"
   cp -a "${intl}" "${s}/subprojects/proxy-libintl-0.5"
+  # glib_checks / glib_assert are deliberately left at their defaults (on):
+  # g_return_if_fail() precondition checks are a cheap safety net in a library
+  # that handles web-derived strings and buffers; compiling them out turns a
+  # logged early return into memory corruption.
   build_meson "${s}" \
-    -Dtests=false -Dglib_assert=false -Dglib_checks=false \
+    -Dtests=false \
     -Dintrospection=disabled -Dnls=disabled -Dman-pages=disabled \
     -Ddtrace=disabled -Dsystemtap=disabled -Dlibmount=disabled \
     -Dselinux=disabled -Dxattr=false
@@ -126,10 +130,12 @@ dep_freetype_stage1() {
 
 dep_harfbuzz() {
   local s; s="$(fetch_source harfbuzz)"
+  # wasm=disabled pins the experimental WebAssembly shaper off (it carried
+  # CVE-2026-113679/113680); meson's default is off today, keep it explicit.
   build_meson "${s}" \
     -Dglib=enabled -Dfreetype=enabled -Dgobject=disabled \
     -Dcairo=disabled -Dicu=disabled -Dtests=disabled \
-    -Ddocs=disabled -Dutilities=disabled
+    -Ddocs=disabled -Dutilities=disabled -Dwasm=disabled
 }
 
 dep_freetype_stage2() {
@@ -302,6 +308,13 @@ dep_dav1d() {
 
 dep_curl() {
   local s; s="$(fetch_source curl)"
+  # Compile in only the protocols the engine actually speaks: HTTP(S), FTP(S)
+  # (src/net.c renders FTP directory listings) and WebSocket. tftp, gopher,
+  # dict, telnet, file, smtp, pop3, imap, rtsp, mqtt, ldap and smb are each
+  # extra parser code exposed to hostile servers and an SSRF primitive if a
+  # page can steer a request at them, so they are disabled at build time; the
+  # engine's CURLOPT_PROTOCOLS_STR allow-list is the second layer. CI asserts
+  # the resulting `curl-config --protocols` list.
   # curl defaults CURL_USE_PKGCONFIG=OFF on Apple, so its FindBrotli does not
   # locate our static brotli via pkg-config and brotli silently drops out. Give
   # FindBrotli explicit absolute-path hints (its documented input variables) so
@@ -316,6 +329,11 @@ dep_curl() {
     -DBROTLI_INCLUDE_DIR="${PREFIX}/include" \
     -DBROTLICOMMON_LIBRARY="${PREFIX}/lib/libbrotlicommon.a" \
     -DBROTLIDEC_LIBRARY="${PREFIX}/lib/libbrotlidec.a" \
+    -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_TFTP=ON -DCURL_DISABLE_GOPHER=ON \
+    -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_TELNET=ON -DCURL_DISABLE_SMTP=ON \
+    -DCURL_DISABLE_POP3=ON -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_RTSP=ON \
+    -DCURL_DISABLE_MQTT=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON \
+    -DCURL_DISABLE_SMB=ON -DCURL_DISABLE_FTP=OFF \
     -DHTTP_ONLY=OFF
 }
 
