@@ -243,11 +243,44 @@ jobs:
           ( cd dist && sha256sum ./*.tar.gz manifest.txt > SHA256SUMS )
           echo "== release assets =="; ls -lh dist
 
-      - name: Attest build provenance of the release assets
-        # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
-        # Consumers verify with: gh attestation verify <asset> --repo <this repo>
-        # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
-        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+      # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
+      # Consumers verify with: gh attestation verify <asset> --repo <this repo>
+      # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
+      # Signing talks to the Sigstore transparency log, which occasionally
+      # answers 500; retry twice with a pause before giving up. The release
+      # steps below run only if an attestation was made, so every published
+      # asset is attested (consumers with gh refuse unattested assets).
+      - name: Attest build provenance of the release assets (attempt 1)
+        id: attest1
+        continue-on-error: true
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/nordstjernen-linux-gtk-*.tar.gz
+            dist/SHA256SUMS
+
+      - name: Pause before retrying the attestation
+        if: steps.attest1.outcome == 'failure'
+        run: sleep 45
+
+      - name: Attest build provenance of the release assets (attempt 2)
+        id: attest2
+        if: steps.attest1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/nordstjernen-linux-gtk-*.tar.gz
+            dist/SHA256SUMS
+
+      - name: Pause before the last attestation attempt
+        if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        run: sleep 90
+
+      - name: Attest build provenance of the release assets (attempt 3)
+        id: attest3
+        if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             dist/nordstjernen-linux-gtk-*.tar.gz
