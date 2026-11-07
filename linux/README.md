@@ -8,29 +8,36 @@ to package it.
 It is deliberately **different** from the `android/` and `ios/` sysroots. Those
 cross-compile the *entire* GLib/cairo/pango stack, because mobile ships no
 system libraries. The desktop Linux port, by contrast, runs on a normal Ubuntu
-with a full graphics stack already installed — so here we build **only GTK**,
-against the system libraries, and overlay it on top of the distro. Everything
-else (glib, cairo, pango, gdk-pixbuf, graphene, libepoxy, harfbuzz, wayland, …)
-comes from Ubuntu via `apt build-dep gtk4`.
+with a full graphics stack already installed — so here we build **only GTK**
+(plus the GLib and Pango releases it requires) against the system libraries,
+and overlay it on top of the distro. Everything else (cairo, gdk-pixbuf,
+graphene, libepoxy, harfbuzz, wayland, …) comes from Ubuntu via
+`apt build-dep gtk4`.
 
 ## Targets
 
 | Setting        | Value                                                        |
 |----------------|--------------------------------------------------------------|
-| GTK            | `4.23.3` (development series toward GTK 4.24)                |
+| GTK            | `4.25.0` (development series toward GTK 4.26)                |
 | Build host     | Ubuntu (`ubuntu-26.04` runner)                              |
 | Arch           | `x86_64` (shared libraries)                                 |
 | Build system   | Meson + Ninja + pkg-config                                  |
-| Dependencies   | system libraries from `apt build-dep gtk4` (not rebuilt)    |
+| Dependencies   | GLib `2.90.1` + Pango `1.58.2` built into the overlay (GTK 4.25 needs newer than Ubuntu's); the rest from `apt build-dep gtk4` |
 
-GTK 4.23.x is the **unstable development series** leading to GTK 4.24; Ubuntu
+GTK 4.25.x is the **unstable development series** leading to GTK 4.26; Ubuntu
 packages only stable GTK, which is why it is built from the GNOME source
 tarball here.
 
 ## What gets built
 
-The pinned version and verified checksum live in
-[`deps/manifest.txt`](deps/manifest.txt). Only one thing is built:
+The pinned versions and verified checksums live in
+[`deps/manifest.txt`](deps/manifest.txt). Four things are built, in this order:
+
+- **wayland-protocols** — XML-only; GTK needs a release newer than Ubuntu's.
+- **GLib** and **Pango** — GTK 4.25 requires glib ≥ 2.89.3 and pango ≥ 1.58,
+  newer than Ubuntu 26.04's 2.88 / 1.57. GLib is ABI-backward-compatible, so the
+  system cairo/gdk-pixbuf/harfbuzz keep working once the overlay is first on
+  `LD_LIBRARY_PATH`.
 
 - **GTK 4** — `libgtk-4.so` + headers + `gtk4.pc`, with the wayland and X11
   backends and the GL/Vulkan renderers (whatever the system deps support).
@@ -76,9 +83,9 @@ just `curl`, `tar` and `sha256sum`.
    export PKG_CONFIG="pkg-config --define-prefix"   # relocate the .pc prefix
    ```
 
-> **Same-distro requirement.** The overlay is only GTK; it links the system
-> glib/cairo/pango/… it was compiled against, so consume it on the **same
-> Ubuntu release** it was built on.
+> **Same-distro requirement.** The overlay links the system cairo/harfbuzz/
+> gdk-pixbuf/… it was compiled against, so consume it on the **same Ubuntu
+> release** it was built on.
 
 ## Building the overlay locally (the slow path)
 
@@ -95,7 +102,8 @@ linux/scripts/build-linux-deps.sh    # defaults to the host arch (x86_64)
 Useful flags:
 
 - `--sysroot DIR` — install base (default `$NORDSTJERNEN_LINUX_SYSROOT`).
-- `--only name1,name2` — build only some deps (`wayland-protocols`, `gtk`).
+- `--only name1,name2` — build only some deps (`wayland-protocols`, `glib`,
+  `pango`, `gtk`).
 
 ## Layout
 

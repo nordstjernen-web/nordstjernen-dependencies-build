@@ -83,9 +83,13 @@ jobs:
           # compiler, etc. for the exact Ubuntu we build on.
           sudo apt-get build-dep -y gtk4 || sudo apt-get build-dep -y libgtk-4-dev
           # Tooling not guaranteed to be in the build-dep set.
+          # GLib's and Pango's own build deps (normally pulled in by libglib2.0-dev,
+          # listed explicitly so the overlay's glib/pango builds never depend on it).
           sudo apt-get install -y --no-install-recommends \
             build-essential ninja-build pkg-config cmake ccache \
-            gettext ca-certificates
+            gettext ca-certificates \
+            libffi-dev libpcre2-dev libmount-dev libselinux1-dev zlib1g-dev \
+            libfontconfig-dev libfreetype-dev libthai-dev libfribidi-dev
           # Recent Meson/Ninja from PyPI (Ubuntu's can lag GTK's requirement).
           # Exact versions + sha256 (pip --require-hashes): see the requirements file.
           python -m pip install --require-hashes -r .github/requirements-build.txt
@@ -153,8 +157,16 @@ jobs:
             # Confirm GTK linked against the system stack it was built on.
             readelf -dW "${SO}" | grep -Eq 'NEEDED.*(libglib-2\.0|libgobject-2\.0)' \
               || { echo "::error::libgtk-4 does not link glib/gobject"; exit 1; }
-            echo "ok   libgtk-4 links the system GLib stack"
+            echo "ok   libgtk-4 links the GLib stack"
           fi
+          # The overlay's own GLib and Pango must be there and be the pinned releases.
+          for m in glib-2.0 pango; do
+            want="$(awk -v n="${m%%-*}" '$1==n{print $2}' linux/deps/manifest.txt)"
+            got="$(pkg-config --modversion "$m")" \
+              || { echo "::error::${m} not found in the overlay prefix"; exit 1; }
+            [ "${got}" = "${want}" ] || { echo "::error::${m} is ${got}, manifest pins ${want}"; exit 1; }
+            echo "ok   overlay ${m} ${got}"
+          done
           echo "ok   gtk4 ${GOT} built and installed"
 
       - name: Stage artifact tree
@@ -170,6 +182,8 @@ jobs:
             echo "arch=${{ matrix.arch }}"
             echo "os=$(. /etc/os-release && echo "${PRETTY_NAME}")"
             echo "gtk=$(awk '$1=="gtk"{print $2}' linux/deps/manifest.txt)"
+            echo "glib=$(awk '$1=="glib"{print $2}' linux/deps/manifest.txt)"
+            echo "pango=$(awk '$1=="pango"{print $2}' linux/deps/manifest.txt)"
             echo "commit=${{ github.sha }}"
             echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "meson=$(meson --version)"
@@ -246,10 +260,12 @@ jobs:
       # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
       # Consumers verify with: gh attestation verify <asset> --repo <this repo>
       # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
-      # Signing talks to the Sigstore transparency log, which occasionally
-      # answers 500; retry twice with a pause before giving up. The release
-      # steps below run only if an attestation was made, so every published
-      # asset is attested (consumers with gh refuse unattested assets).
+      # Signing talks to the Sigstore transparency log, which has outages
+      # (Rekor answered 500 for hours on 2026-11-07). Retry twice with a pause;
+      # if all attempts fail, warn loudly and still publish: a Sigstore outage
+      # must not block a security update. The fetch scripts treat a missing
+      # attestation as a warning (fatal with NORDSTJERNEN_REQUIRE_ATTESTATION=1)
+      # and a present-but-invalid one as fatal.
       - name: Attest build provenance of the release assets (attempt 1)
         id: attest1
         continue-on-error: true
@@ -280,11 +296,17 @@ jobs:
       - name: Attest build provenance of the release assets (attempt 3)
         id: attest3
         if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        continue-on-error: true
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             dist/nordstjernen-linux-gtk-*.tar.gz
             dist/SHA256SUMS
+
+      - name: Report an unattested release
+        if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure' && steps.attest3.outcome == 'failure'
+        run: |
+          echo "::warning title=Release assets are NOT attested::All three attestation attempts failed (Sigstore outage?). Publishing anyway; re-run this job once https://status.sigstore.dev is green to attach attestations."
 
       - name: Compute immutable release tag
         id: reltag
@@ -326,9 +348,10 @@ jobs:
             - Arch: x86_64 (shared libraries)
             - Checksums in `SHA256SUMS`.
 
-            This overlay only contains GTK; every other dependency (glib, cairo,
-            pango, gdk-pixbuf, graphene, libepoxy, ...) comes from the system, so
-            consume it on the same Ubuntu release it was built on.
+            The overlay contains GTK plus the GLib and Pango releases it requires
+            (and wayland-protocols); every other dependency (cairo, gdk-pixbuf,
+            graphene, libepoxy, harfbuzz, ...) comes from the system, so consume
+            it on the same Ubuntu release it was built on.
 
             Consume with:
             ```bash

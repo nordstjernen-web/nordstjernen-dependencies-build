@@ -18,10 +18,10 @@
 # libepoxy, harfbuzz, wayland, ... ) provided by the distro. On Ubuntu:
 #     sudo apt-get build-dep gtk4
 #
-# Unlike the android/ios sysroots, this does NOT rebuild the GLib/cairo/pango
+# Unlike the android/ios sysroots, this does NOT rebuild the whole graphics
 # stack: GTK is compiled against the system libraries. Only pieces Ubuntu does
-# not package (a development release of GTK, plus a wayland-protocols newer than
-# the distro's) are built from source.
+# not package new enough (a development release of GTK, the GLib and Pango it
+# requires, and a newer wayland-protocols) are built from source.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,6 +77,26 @@ dep_wayland_protocols() {
   build_meson "${s}" -Dtests=false
 }
 
+dep_glib() {
+  local s; s="$(fetch_source glib)"
+  # GTK 4.25 needs a newer GLib than ubuntu-26.04 ships. Library + tools only;
+  # glib_checks/glib_assert stay at their defaults (the engine handles web-derived
+  # data through GLib, so the precondition checks are worth keeping).
+  build_meson "${s}" \
+    -Dtests=false -Dinstalled_tests=false \
+    -Dintrospection=disabled -Ddocumentation=false -Dman-pages=disabled \
+    -Dsysprof=disabled -Ddtrace=disabled -Dsystemtap=disabled
+}
+
+dep_pango() {
+  local s; s="$(fetch_source pango)"
+  # GTK 4.25 needs pango >= 1.58; ubuntu-26.04 ships 1.57. Built against the
+  # overlay's GLib and the system harfbuzz/fontconfig/cairo/fribidi.
+  build_meson "${s}" \
+    -Dintrospection=disabled -Ddocumentation=false -Dman-pages=false \
+    -Dbuild-testsuite=false -Dbuild-examples=false -Dsysprof=disabled
+}
+
 dep_gtk() {
   local s; s="$(fetch_source gtk)"
   # Build the shared library only; skip everything that pulls extra tooling or
@@ -97,9 +117,10 @@ dep_gtk() {
     -Dmedia-gstreamer=disabled
 }
 
-# Ordered build plan (manifest names; wayland-protocols must precede gtk so the
-# newer .pc is in our prefix before GTK's dependency check runs).
-BUILD_PLAN=(wayland-protocols gtk)
+# Ordered build plan (manifest names). wayland-protocols, glib and pango must
+# precede gtk so their newer .pc files are in our prefix before GTK's dependency
+# check runs; pango needs the overlay glib first.
+BUILD_PLAN=(wayland-protocols glib pango gtk)
 
 log "==> Building Nordstjernen Linux GTK overlay for ${CURRENT_ARCH}"
 log "    Prefix:  ${PREFIX}"
@@ -129,7 +150,7 @@ strip_install
 
 log "==> Done. GTK overlay for ${CURRENT_ARCH} installed under ${PREFIX}"
 log "    Libraries:"
-( cd "${PREFIX}/lib" 2>/dev/null && ls -1 libgtk-4.so* 2>/dev/null | sed 's/^/      /' ) || true
+( cd "${PREFIX}/lib" 2>/dev/null && ls -1 libgtk-4.so* libglib-2.0.so* libpango-1.0.so* 2>/dev/null | sed 's/^/      /' ) || true
 log "    pkg-config modules:"
 ( cd "${PREFIX}/lib/pkgconfig" 2>/dev/null && ls -1 gtk4*.pc 2>/dev/null | sed 's/^/      /' ) || true
 
