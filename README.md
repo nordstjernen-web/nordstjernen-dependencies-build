@@ -203,6 +203,28 @@ desktop engine as usual.
 - **CI:** [`.github/workflows/build-linux-deps.yml`](.github/workflows/build-linux-deps.yml)
   publishes `linux-gtk-latest` on every successful build of `main`.
 
+#### Why GTK 4.25
+
+4.25.0 is the first release of the development series toward GTK 4.26, and
+what it brings over the previous 4.23.3 pin is mostly speed in exactly the
+paths a browser shell exercises (from GTK's `NEWS`):
+
+- **Large performance improvements** in the GSK renderer (path caching and
+  frame diffing, so unchanged parts of a frame are not re-rendered), in the
+  whole GTK action framework, in **CSS selector parsing and matching**, and in
+  **paragraph layout and text handling** whose cost used to grow with line
+  length.
+- `GtkGridView` gained **sections**, and the emoji chooser was ported to it.
+- `GskBlurNode` now has **separate X and Y radii**.
+- `GtkApplication` can handle URLs on macOS.
+- Every bug fix from the 4.23.4, 4.24.0 and 4.24.1 releases in between,
+  including accessibility fixes (sortable `GtkColumnView` headers exposed to
+  assistive technology), a Wayland EGL regression, mixed-DPI cursor scaling
+  on Windows and a theme-reload loop that pinned a CPU.
+
+The price is that 4.25 requires GLib ≥ 2.89.3 and Pango ≥ 1.58, which is why
+the overlay now builds those two as well.
+
 ### Trust model of the published sysroots
 
 Every release asset is produced by the workflows in this repository from
@@ -224,8 +246,7 @@ gh attestation verify nordstjernen-android-sysroot-arm64-v8a.tar.gz \
 ```
 
 Pin `--tag <immutable tag>` and set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` for a
-reproducible, verified consumer build. See [`SECURITY-REVIEW.md`](SECURITY-REVIEW.md)
-for the review that led to this setup.
+reproducible, verified consumer build.
 
 ## Maintaining the pins
 
