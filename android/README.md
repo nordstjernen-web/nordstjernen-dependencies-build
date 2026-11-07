@@ -183,7 +183,7 @@ The release-publishing job runs only for commits on `main` (push or a manual
 never publishes, and the nightly schedule builds but does not republish, so the
 released assets change only when `main` changes. Every publish uploads the
 assets twice: to the rolling `-latest` release (overwritten in place) and to an
-immutable per-commit release (`sysroot-<YYYYMMDD>-<sha>`, never updated) that
+immutable per-commit release (`sysroot-<YYYYMMDD>-<sha>-r<run>`, never updated) that
 consumers can pin. Each asset carries a GitHub build-provenance attestation;
 `fetch-prebuilt-deps.sh` verifies it with `gh attestation verify` when the `gh`
 CLI is installed (set `NORDSTJERNEN_REQUIRE_ATTESTATION=1` to make that

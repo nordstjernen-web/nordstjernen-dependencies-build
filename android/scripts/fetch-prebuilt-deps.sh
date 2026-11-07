@@ -75,8 +75,14 @@ verify_attestation() {
   if ! gh auth status >/dev/null 2>&1; then soft_fail "gh CLI is not authenticated (set GH_TOKEN)"; return 0; fi
   local digest count
   digest="$(sha256sum "${file}" | awk '{print $1}')"
-  count="$(gh api "repos/${REPO}/attestations/sha256:${digest}" --jq '.attestations | length' 2>/dev/null || echo "")"
-  if [ -z "${count}" ]; then soft_fail "could not query the attestations API for ${name}"; return 0; fi
+  local api_out
+  if api_out="$(gh api "repos/${REPO}/attestations/sha256:${digest}" --jq '.attestations | length' 2>&1)"; then
+    count="${api_out}"
+  elif printf '%s' "${api_out}" | grep -qiE 'not found|HTTP 404'; then
+    count=0
+  else
+    soft_fail "could not query the attestations API for ${name} (${api_out##*$'\n'})"; return 0
+  fi
   if [ "${count}" = "0" ]; then soft_fail "no build-provenance attestation is published for ${name}"; return 0; fi
   gh attestation verify "${file}" --repo "${REPO}" >/dev/null 2>&1 \
     || die "provenance attestation check FAILED for ${name} (repo ${REPO}); refusing to install"
