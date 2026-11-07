@@ -56,24 +56,32 @@ trap 'rm -rf "${tmp}"' EXIT
 UA="nordstjernen-ios-deps/1.0 (+https://github.com/${REPO})"
 dl() { curl -fsSL --proto '=https' --proto-redir '=https' --retry 4 --retry-delay 2 -A "${UA}" -o "$2" "$1"; }
 
-# Verify the GitHub build-provenance attestation of a downloaded asset when the
-# gh CLI is available. SHA256SUMS comes from the same release as the tarball,
-# so it only proves the download is intact; the attestation proves the asset
-# was produced by this repository's workflow from a specific commit. Set
-# NORDSTJERNEN_REQUIRE_ATTESTATION=1 to make a missing gh fatal; a failed
-# check is always fatal.
+# Verify a downloaded asset's GitHub build-provenance attestation. SHA256SUMS
+# comes from the same release as the tarball, so it only proves the download is
+# intact; the attestation proves the asset was produced by this repository's
+# workflow from a specific commit. Needs an authenticated gh CLI (GH_TOKEN on
+# CI). Policy:
+#   - gh missing or unauthenticated   -> warn (fatal with NORDSTJERNEN_REQUIRE_ATTESTATION=1)
+#   - no attestation published        -> warn (fatal with NORDSTJERNEN_REQUIRE_ATTESTATION=1);
+#                                        happens when Sigstore was down at publish time
+#   - attestation present but invalid -> always fatal
 verify_attestation() {
-  local file="$1"
-  if ! command -v gh >/dev/null 2>&1; then
-    if [ "${NORDSTJERNEN_REQUIRE_ATTESTATION:-0}" != "0" ]; then
-      die "gh CLI not found but NORDSTJERNEN_REQUIRE_ATTESTATION is set; install gh to verify ${file##*/}"
-    fi
-    warn "gh CLI not found; skipping provenance verification of ${file##*/} (set NORDSTJERNEN_REQUIRE_ATTESTATION=1 to require it)"
-    return 0
-  fi
+  local file="$1" name="${1##*/}"
+  local required="${NORDSTJERNEN_REQUIRE_ATTESTATION:-0}"
+  soft_fail() {
+    if [ "${required}" != "0" ]; then die "$1 (NORDSTJERNEN_REQUIRE_ATTESTATION is set)"; fi
+    warn "$1; skipping provenance verification of ${name} (set NORDSTJERNEN_REQUIRE_ATTESTATION=1 to require it)"
+  }
+  if ! command -v gh >/dev/null 2>&1; then soft_fail "gh CLI not found"; return 0; fi
+  if ! gh auth status >/dev/null 2>&1; then soft_fail "gh CLI is not authenticated (set GH_TOKEN)"; return 0; fi
+  local digest count
+  digest="$(sha256bin "${file}" | awk '{print $1}')"
+  count="$(gh api "repos/${REPO}/attestations/sha256:${digest}" --jq '.attestations | length' 2>/dev/null || echo "")"
+  if [ -z "${count}" ]; then soft_fail "could not query the attestations API for ${name}"; return 0; fi
+  if [ "${count}" = "0" ]; then soft_fail "no build-provenance attestation is published for ${name}"; return 0; fi
   gh attestation verify "${file}" --repo "${REPO}" >/dev/null 2>&1 \
-    || die "provenance attestation check FAILED for ${file##*/} (repo ${REPO}); refusing to install"
-  log "verified build provenance of ${file##*/}"
+    || die "provenance attestation check FAILED for ${name} (repo ${REPO}); refusing to install"
+  log "verified build provenance of ${name}"
 }
 
 log "Downloading checksum manifest from ${TAG}"

@@ -19,11 +19,12 @@
 #
 # Unlike the android/ and ios/ sysroots (which cross-compile the whole
 # GLib/cairo/pango stack because mobile drops system libraries), the desktop
-# Linux port builds *against* Ubuntu's system graphics stack. The engine only
-# needs one piece that Ubuntu does not package: a bleeding-edge development
-# release of GTK 4. So this manifest pins GTK itself and nothing else; every
-# other GTK dependency (glib, cairo, pango, gdk-pixbuf, graphene, libepoxy,
-# harfbuzz, wayland, ...) is provided by the distro via `apt build-dep gtk4`.
+# Linux port builds *against* Ubuntu's system graphics stack. This manifest
+# pins only what the development GTK needs and the distro does not ship new
+# enough: GTK itself, the GLib and Pango releases it requires, and a newer
+# wayland-protocols. Everything else (cairo, gdk-pixbuf, graphene, libepoxy,
+# harfbuzz, fontconfig, wayland, ...) comes from the distro via
+# `apt build-dep gtk4`.
 #
 # Versions below were pinned against upstream release tarballs and their
 # checksums verified at pin time. Bump deliberately and re-verify the sha256.
@@ -40,8 +41,18 @@
 # >= 1.48. Re-bump when the build host moves to a distro with wayland >= 1.26.
 wayland-protocols 1.48 c563af8e2e784f9599fe23819a3fc5e7d946e76db9f90a2e3ba6c9a869a52911  https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.48/wayland-protocols-1.48.tar.gz
 
+# --- GLib / Pango too new for the distro -----------------------------------
+# GTK 4.25 requires glib >= 2.89.3 and pango >= 1.58; ubuntu-26.04 ships glib
+# 2.88 and pango 1.57. Both are built into the overlay (same releases the mobile
+# sysroots pin; GLib is ABI-backward-compatible, so the system cairo/gdk-pixbuf/
+# harfbuzz keep working against it once the overlay is first on LD_LIBRARY_PATH).
+# sha256 verified against the .sha256sum files GNOME publishes next to each tarball.
+glib        2.90.1    93c941aa17d5eb1d53fe838365f29a8b4e539c222a256d974ec8f30fc413e396  https://download.gnome.org/sources/glib/2.90/glib-2.90.1.tar.xz
+pango       1.58.2    342385b6ca3b7c73455d7c80a13b7dbe4489e00bc3bd4c5bd6ed4dce421e374a  https://download.gnome.org/sources/pango/1.58/pango-1.58.2.tar.xz
+
 # --- GTK (development release, not packaged by Ubuntu) ----------------------
-# 4.23.x is the unstable development series leading to GTK 4.24. Ubuntu ships
-# only stable GTK, so we build this dev release from the GNOME source tarball
-# to test the latest Nordstjernen against it.
-gtk         4.23.3    c81912b082a5beaad1d84944805bf7cc0f86c6a933e131664dad3db326ede924  https://download.gnome.org/sources/gtk/4.23/gtk-4.23.3.tar.xz
+# 4.25.x is the unstable development series leading to GTK 4.26 (4.24 is the
+# current stable). Ubuntu ships only stable GTK, so we build this dev release
+# from the GNOME source tarball to test the latest Nordstjernen against it.
+# sha256 verified against GNOME's gtk-4.25.0.sha256sum.
+gtk         4.25.0    b3be06010592825c140611dad7bee538c7c535b7f091e5c24846683306a91b08  https://download.gnome.org/sources/gtk/4.25/gtk-4.25.0.tar.xz

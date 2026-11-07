@@ -21,8 +21,8 @@ On **mobile** the engine drops GTK 4, librsvg and gdk-pixbuf, so the Android/iOS
 dependency set is the GLib/cairo/pango graphics stack plus the network, storage
 and image libraries — all plain C, no Rust toolchain. The **desktop Linux** port
 *does* use GTK 4: it runs on a normal Ubuntu with a full system graphics stack,
-so the Linux build compiles only GTK itself (against the system libraries)
-rather than the whole stack.
+so the Linux build compiles only GTK itself, plus the GLib and Pango releases
+it requires, against the system libraries rather than the whole stack.
 
 ## Libraries built
 
@@ -181,10 +181,11 @@ Then put the overlay ahead of the system GTK (`PKG_CONFIG_PATH` +
 `LD_LIBRARY_PATH`, see [`linux/README.md`](linux/README.md)) and build/run the
 desktop engine as usual.
 
-- **Targets:** a development **GTK 4** (`4.23.3`, the series toward GTK 4.24)
-  built on Ubuntu against the system graphics stack; `x86_64`, shared libraries.
-  Only GTK is built — every other dependency comes from the distro — so consume
-  it on the same Ubuntu release it was built on.
+- **Targets:** a development **GTK 4** (`4.25.0`, the series toward GTK 4.26)
+  built on Ubuntu against the system graphics stack, plus the GLib `2.90.1` and
+  Pango `1.58.2` it requires (newer than Ubuntu's); `x86_64`, shared libraries.
+  Every other dependency comes from the distro, so consume it on the same
+  Ubuntu release it was built on.
 - **CI:** [`.github/workflows/build-linux-deps.yml`](.github/workflows/build-linux-deps.yml)
   publishes `linux-gtk-latest` on every successful build of `main`.
 
@@ -193,7 +194,8 @@ desktop engine as usual.
 Every release asset is produced by the workflows in this repository from
 checksum-pinned upstream tarballs, on SHA-pinned GitHub Actions, and is
 published only from `main`. Each asset carries a GitHub **build-provenance
-attestation** (SLSA, signed by GitHub's OIDC identity for the workflow run) and
+attestation** (SLSA, signed by GitHub's OIDC identity for the workflow run;
+best-effort, since a Sigstore outage must not block a security update) and
 is uploaded both to the rolling `*-latest` release and to an **immutable
 per-commit release** (`sysroot-<date>-<sha>`, `ios-sysroot-<date>-<sha>`,
 `linux-gtk-<date>-<sha>`). The `fetch-prebuilt-deps.sh` scripts verify the

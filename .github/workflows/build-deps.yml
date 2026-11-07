@@ -277,10 +277,12 @@ jobs:
       # SLSA provenance signed by GitHub's OIDC identity for this workflow run.
       # Consumers verify with: gh attestation verify <asset> --repo <this repo>
       # (fetch-prebuilt-deps.sh does so automatically when gh is installed).
-      # Signing talks to the Sigstore transparency log, which occasionally
-      # answers 500; retry twice with a pause before giving up. The release
-      # steps below run only if an attestation was made, so every published
-      # asset is attested (consumers with gh refuse unattested assets).
+      # Signing talks to the Sigstore transparency log, which has outages
+      # (Rekor answered 500 for hours on 2026-11-07). Retry twice with a pause;
+      # if all attempts fail, warn loudly and still publish: a Sigstore outage
+      # must not block a security update. The fetch scripts treat a missing
+      # attestation as a warning (fatal with NORDSTJERNEN_REQUIRE_ATTESTATION=1)
+      # and a present-but-invalid one as fatal.
       - name: Attest build provenance of the release assets (attempt 1)
         id: attest1
         continue-on-error: true
@@ -311,11 +313,17 @@ jobs:
       - name: Attest build provenance of the release assets (attempt 3)
         id: attest3
         if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure'
+        continue-on-error: true
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             dist/nordstjernen-android-sysroot-*.tar.gz
             dist/SHA256SUMS
+
+      - name: Report an unattested release
+        if: steps.attest1.outcome == 'failure' && steps.attest2.outcome == 'failure' && steps.attest3.outcome == 'failure'
+        run: |
+          echo "::warning title=Release assets are NOT attested::All three attestation attempts failed (Sigstore outage?). Publishing anyway; re-run this job once https://status.sigstore.dev is green to attach attestations."
 
       - name: Compute immutable release tag
         id: reltag
