@@ -310,12 +310,14 @@ jobs:
 
       - name: Compute immutable release tag
         id: reltag
-        run: echo "tag=linux-gtk-$(date -u +%Y%m%d)-${GITHUB_SHA::9}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=linux-gtk-$(date -u +%Y%m%d)-${GITHUB_SHA::9}-r${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
       - name: Publish immutable per-commit release ${{ steps.reltag.outputs.tag }}
         # The rolling '-latest' release below is overwritten in place, so it can
-        # never be pinned. This copy is tied to the source commit and is never
-        # updated; consumers who want reproducible builds pin this tag.
+        # never be pinned. This copy is tied to the source commit and run number
+        # and is never updated (a re-run of the same commit, e.g. to attest after
+        # a Sigstore outage, creates a new release); consumers pin this tag in
+        # their sysroot.lock.
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ steps.reltag.outputs.tag }}

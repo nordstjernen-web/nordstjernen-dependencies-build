@@ -233,8 +233,9 @@ published only from `main`. Each asset carries a GitHub **build-provenance
 attestation** (SLSA, signed by GitHub's OIDC identity for the workflow run;
 best-effort, since a Sigstore outage must not block a security update) and
 is uploaded both to the rolling `*-latest` release and to an **immutable
-per-commit release** (`sysroot-<date>-<sha>`, `ios-sysroot-<date>-<sha>`,
-`linux-gtk-<date>-<sha>`). The `fetch-prebuilt-deps.sh` scripts verify the
+per-commit release** (`sysroot-<date>-<sha>-r<run>`, `ios-sysroot-<date>-<sha>-r<run>`,
+`linux-gtk-<date>-<sha>-r<run>`; a re-run of the same commit gets a new release
+rather than overwriting one a consumer may have locked). The `fetch-prebuilt-deps.sh` scripts verify the
 SHA-256 from `SHA256SUMS` and, when an authenticated `gh` CLI is present
 (`GH_TOKEN` on CI), the attestation. A missing `gh`, a missing login or a
 missing attestation (an asset published while Sigstore was down) only warns;
@@ -274,6 +275,9 @@ reproducible, verified consumer build.
   builds but never publishes, and the nightly schedule builds to catch toolchain
   drift but does not republish, so the released assets change only when `main`
   changes. Every publish writes the rolling `*-latest` release and an immutable
-  per-commit one. If Sigstore is down the assets are published unattested with
+  per-commit one. The engine pins the immutable tag and the hash of its
+  `SHA256SUMS` in its `android/sysroot.lock` / `ios/sysroot.lock`, and its
+  `sysroot-bump` workflow opens a pull request there when a newer *attested*
+  release appears. If Sigstore is down the assets are published unattested with
   a loud workflow warning; re-run the publish job once
   [status.sigstore.dev](https://status.sigstore.dev) is green to attach them.
